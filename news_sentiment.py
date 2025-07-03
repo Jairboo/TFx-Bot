@@ -69,50 +69,153 @@ class NewsAnalyzer:
         ]
 
     def get_fxstreet_news(self):
-        """Scrape news from FXStreet currencies section"""
+        """Enhanced scraping from FXStreet currencies section with multiple selectors"""
         try:
             print("📰 Fetching FXStreet currency news...")
-            response = requests.get(self.news_sources['fxstreet'], 
-                                  headers=self.headers, timeout=15)
             
-            if response.status_code != 200:
-                print(f"❌ FXStreet request failed with status {response.status_code}")
-                return []
+            # Add session with retries
+            session = requests.Session()
+            session.headers.update(self.headers)
             
-            soup = BeautifulSoup(response.text, 'html.parser')
-            news_items = []
-            
-            # Find news articles - FXStreet structure
-            articles = soup.find_all(['article', 'div'], class_=lambda x: x and any(term in x.lower() for term in ['news', 'article', 'story', 'item']))
-            
-            if not articles:
-                # Fallback: try to find any links that look like news
-                articles = soup.find_all('a', href=lambda x: x and ('/news/' in x or '/analysis/' in x))
-            
-            for article in articles[:25]:  # Limit to 25 articles
+            # Multiple attempts with different approaches
+            for attempt in range(3):
                 try:
-                    title_elem = article.find(['h1', 'h2', 'h3', 'h4', 'span', 'a'])
-                    if not title_elem:
-                        title_elem = article
+                    response = session.get(self.news_sources['fxstreet'], timeout=20)
                     
-                    title = title_elem.get_text(strip=True) if title_elem else ""
+                    if response.status_code != 200:
+                        print(f"❌ FXStreet request failed with status {response.status_code}")
+                        continue
                     
-                    if title and len(title) > 10:  # Filter out very short titles
-                        # Determine impact level based on title content
-                        impact_level = self.determine_news_impact(title)
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    news_items = []
+                    
+                    # Multiple selector strategies for better coverage
+                    selectors = [
+                        # Standard article tags
+                        {'tag': 'article', 'class': None},
+                        {'tag': 'div', 'class': lambda x: x and any(term in x.lower() for term in ['news', 'article', 'story', 'item', 'post'])},
+                        # Title-based selectors
+                        {'tag': ['h1', 'h2', 'h3', 'h4'], 'class': None},
+                        # Link-based selectors
+                        {'tag': 'a', 'href': lambda x: x and ('/news/' in x or '/analysis/' in x or '/currencies/' in x)},
+                        # Generic content selectors
+                        {'tag': 'div', 'class': lambda x: x and any(term in x.lower() for term in ['content', 'headline', 'title'])},
+                    ]
+                    
+                    for selector in selectors:
+                        if selector['tag'] == 'a' and 'href' in selector:
+                            articles = soup.find_all(selector['tag'], href=selector['href'])
+                        elif selector['class']:
+                            articles = soup.find_all(selector['tag'], class_=selector['class'])
+                        else:
+                            articles = soup.find_all(selector['tag'])
                         
-                        news_items.append({
-                            'source': 'FXStreet',
-                            'title': title,
-                            'impact': impact_level,
-                            'time': datetime.now(),
-                            'relevance': 'high' if impact_level == 'High' else 'medium'
-                        })
+                        for article in articles[:30]:  # Increased limit
+                            try:
+                                # Multiple strategies to extract title
+                                title = ""
+                                
+                                # Strategy 1: Direct text content
+                                if article.name in ['h1', 'h2', 'h3', 'h4']:
+                                    title = article.get_text(strip=True)
+                                
+                                # Strategy 2: Find title in children
+                                if not title:
+                                    title_elem = article.find(['h1', 'h2', 'h3', 'h4', 'span', 'a', 'p'])
+                                    if title_elem:
+                                        title = title_elem.get_text(strip=True)
+                                
+                                # Strategy 3: Use article text if reasonable length
+                                if not title:
+                                    text = article.get_text(strip=True)
+                                    if 20 <= len(text) <= 200:  # Reasonable title length
+                                        title = text
+                                
+                                # Strategy 4: Extract from href title or alt text
+                                if not title and article.name == 'a':
+                                    title = article.get('title', '') or article.get('alt', '')
+                                
+                                # Clean and validate title
+                                if title:
+                                    title = re.sub(r'\s+', ' ', title)  # Clean whitespace
+                                    title = title[:200]  # Limit length
+                                    
+                                    # Filter out unwanted content
+                                    skip_patterns = [
+                                        r'^(cookie|privacy|terms|subscribe|login|register)',
+                                        r'^(home|menu|navigation|footer|header)',
+                                        r'^(advertisement|sponsored|ad\s)',
+                                        r'^(share|tweet|facebook|linkedin)',
+                                        r'^(read more|continue reading|view all)',
+                                        r'^\d+$',  # Just numbers
+                                        r'^[^a-zA-Z]*$'  # No letters
+                                    ]
+                                    
+                                    if any(re.search(pattern, title.lower()) for pattern in skip_patterns):
+                                        continue
+                                    
+                                    if len(title) >= 15:  # Minimum meaningful length
+                                        # Extract additional context
+                                        context = ""
+                                        summary_elem = article.find(['p', 'div'], class_=lambda x: x and any(term in x.lower() for term in ['summary', 'excerpt', 'description']))
+                                        if summary_elem:
+                                            context = summary_elem.get_text(strip=True)[:300]
+                                        
+                                        # Determine impact level
+                                        impact_level = self.determine_news_impact(title + " " + context)
+                                        
+                                        # Extract timestamp if available
+                                        time_elem = article.find(['time', 'span'], class_=lambda x: x and any(term in x.lower() for term in ['time', 'date', 'published']))
+                                        news_time = datetime.now()
+                                        if time_elem:
+                                            time_text = time_elem.get_text(strip=True)
+                                            # Basic time parsing
+                                            if 'ago' in time_text.lower():
+                                                news_time = datetime.now() - timedelta(hours=1)
+                                        
+                                        news_items.append({
+                                            'source': 'FXStreet',
+                                            'title': title,
+                                            'context': context,
+                                            'impact': impact_level,
+                                            'time': news_time,
+                                            'relevance': 'high' if impact_level == 'High' else 'medium'
+                                        })
+                                        
+                                        # Avoid duplicates
+                                        if len(news_items) >= 40:
+                                            break
+                                            
+                            except Exception as e:
+                                continue
+                        
+                        if news_items:
+                            break  # Success with this selector
+                    
+                    # Remove duplicates based on title similarity
+                    unique_items = []
+                    seen_titles = set()
+                    
+                    for item in news_items:
+                        title_key = re.sub(r'[^a-zA-Z0-9\s]', '', item['title'].lower())
+                        title_key = re.sub(r'\s+', ' ', title_key).strip()
+                        
+                        if title_key not in seen_titles and len(title_key) > 10:
+                            seen_titles.add(title_key)
+                            unique_items.append(item)
+                    
+                    if unique_items:
+                        print(f"✅ Found {len(unique_items)} unique FXStreet articles")
+                        return unique_items
+                    
                 except Exception as e:
-                    continue
+                    print(f"❌ Attempt {attempt + 1} failed: {e}")
+                    if attempt == 2:
+                        break
+                    time.sleep(2)  # Wait between attempts
             
-            print(f"✅ Found {len(news_items)} FXStreet articles")
-            return news_items
+            print("❌ All FXStreet scraping attempts failed")
+            return []
             
         except Exception as e:
             print(f"❌ Error fetching FXStreet news: {e}")
@@ -182,122 +285,296 @@ class NewsAnalyzer:
         return 'Medium'  # Default to medium impact
 
     def extract_fundamental_signals(self, news_items, currency_pair):
-        """Extract fundamental buy/sell signals based on actual vs forecast logic"""
+        """Advanced fundamental signal extraction with enhanced pattern recognition"""
         fundamental_signals = []
         
+        # Enhanced pattern matching for economic data
         for news in news_items:
             title = news['title'].lower()
-            
-            # Look for actual vs forecast patterns
-            actual_forecast_patterns = [
-                r'actual[:\s]*([+-]?\d+\.?\d*)[%]?\s*[vs\.]*\s*forecast[:\s]*([+-]?\d+\.?\d*)[%]?',
-                r'([+-]?\d+\.?\d*)[%]?\s*vs[\.]*\s*([+-]?\d+\.?\d*)[%]?\s*forecast',
-                r'beats?\s*forecast', r'misses?\s*forecast', r'exceeds?\s*expectations',
-                r'below\s*expectations', r'above\s*expectations'
-            ]
+            context = news.get('context', '').lower()
+            full_text = f"{title} {context}"
             
             signal_strength = 0
             signal_direction = None
+            signal_reason = ""
             
-            # Check for actual vs forecast numerical patterns
-            for pattern in actual_forecast_patterns[:2]:
-                match = re.search(pattern, title)
-                if match:
+            # Advanced actual vs forecast patterns
+            actual_forecast_patterns = [
+                # Numerical patterns
+                r'actual[:\s]*([+-]?\d+\.?\d*)[%]?\s*[vs\.]*\s*forecast[:\s]*([+-]?\d+\.?\d*)[%]?',
+                r'([+-]?\d+\.?\d*)[%]?\s*vs[\.]*\s*([+-]?\d+\.?\d*)[%]?\s*forecast',
+                r'([+-]?\d+\.?\d*)[%]?\s*actual[,\s]*([+-]?\d+\.?\d*)[%]?\s*expected',
+                r'came\s+in\s+at\s+([+-]?\d+\.?\d*)[%]?\s*[vs\.]*\s*([+-]?\d+\.?\d*)[%]?\s*expected',
+                # Qualitative patterns
+                r'beats?\s*forecast', r'misses?\s*forecast', r'exceeds?\s*expectations',
+                r'below\s*expectations', r'above\s*expectations', r'better\s*than\s*expected',
+                r'worse\s*than\s*expected', r'disappointing', r'strong\s*data', r'weak\s*data'
+            ]
+            
+            # Check for numerical actual vs forecast
+            for pattern in actual_forecast_patterns[:4]:
+                match = re.search(pattern, full_text)
+                if match and len(match.groups()) >= 2:
                     try:
-                        if len(match.groups()) >= 2:
-                            actual = float(match.group(1))
-                            forecast = float(match.group(2))
-                            
-                            if actual > forecast:
-                                signal_direction = 'bullish'
-                                signal_strength = min(10, abs(actual - forecast))
-                            elif actual < forecast:
-                                signal_direction = 'bearish'
-                                signal_strength = min(10, abs(actual - forecast))
+                        actual = float(match.group(1))
+                        forecast = float(match.group(2))
+                        
+                        difference = abs(actual - forecast)
+                        percentage_diff = (difference / abs(forecast)) * 100 if forecast != 0 else 0
+                        
+                        if actual > forecast:
+                            signal_direction = 'bullish'
+                            signal_strength = min(10, percentage_diff)
+                            signal_reason = f"Actual {actual} > Forecast {forecast}"
+                        elif actual < forecast:
+                            signal_direction = 'bearish'
+                            signal_strength = min(10, percentage_diff)
+                            signal_reason = f"Actual {actual} < Forecast {forecast}"
                     except:
                         continue
             
-            # Check for qualitative beats/misses
-            if 'beats forecast' in title or 'exceeds expectations' in title or 'above expectations' in title:
-                signal_direction = 'bullish'
-                signal_strength = 7
-            elif 'misses forecast' in title or 'below expectations' in title:
-                signal_direction = 'bearish'
-                signal_strength = 7
-            
-            # Currency-specific impact
-            base_currency = currency_pair[:3]
-            quote_currency = currency_pair[4:7] if len(currency_pair) > 6 else 'USD'
-            
-            # Check if news affects the currencies in the pair
-            affects_base = any(keyword in title for keyword in self.currency_keywords.get(base_currency, []))
-            affects_quote = any(keyword in title for keyword in self.currency_keywords.get(quote_currency, []))
-            
-            if signal_direction and (affects_base or affects_quote):
-                # Adjust signal based on which currency is affected
-                final_direction = signal_direction
-                if affects_quote and not affects_base:
-                    # If quote currency is affected, reverse the signal
-                    final_direction = 'bearish' if signal_direction == 'bullish' else 'bullish'
+            # Enhanced qualitative analysis
+            if not signal_direction:
+                qualitative_signals = {
+                    'bullish': [
+                        'beats forecast', 'exceeds expectations', 'above expectations',
+                        'better than expected', 'strong data', 'surge', 'rally',
+                        'positive surprise', 'upward revision', 'robust growth',
+                        'exceeded estimates', 'outperformed', 'stronger than anticipated'
+                    ],
+                    'bearish': [
+                        'misses forecast', 'below expectations', 'worse than expected',
+                        'disappointing', 'weak data', 'decline', 'fall',
+                        'negative surprise', 'downward revision', 'slow growth',
+                        'missed estimates', 'underperformed', 'weaker than anticipated'
+                    ]
+                }
                 
-                impact_multiplier = 3 if news['impact'] == 'High' else 2 if news['impact'] == 'Medium' else 1
-                final_strength = signal_strength * impact_multiplier
+                for direction, keywords in qualitative_signals.items():
+                    for keyword in keywords:
+                        if keyword in full_text:
+                            signal_direction = direction
+                            signal_strength = 7 if 'strong' in keyword or 'surge' in keyword else 5
+                            signal_reason = f"Qualitative signal: {keyword}"
+                            break
+                    if signal_direction:
+                        break
+            
+            # Enhanced economic indicator analysis
+            if signal_direction:
+                # Boost strength for high-impact indicators
+                high_impact_indicators = [
+                    'interest rate', 'gdp', 'inflation', 'cpi', 'pce', 'nonfarm payrolls',
+                    'employment', 'unemployment', 'fomc', 'ecb decision', 'boe decision'
+                ]
                 
-                fundamental_signals.append({
-                    'direction': final_direction,
-                    'strength': final_strength,
-                    'impact': news['impact'],
-                    'reason': f"{news['source']}: {news['title'][:100]}...",
-                    'affects_base': affects_base,
-                    'affects_quote': affects_quote
-                })
+                for indicator in high_impact_indicators:
+                    if indicator in full_text:
+                        signal_strength *= 1.5
+                        signal_reason += f" (High impact: {indicator})"
+                        break
+                
+                # Currency-specific impact analysis
+                base_currency = currency_pair[:3]
+                quote_currency = currency_pair[4:7] if len(currency_pair) > 6 else 'USD'
+                
+                # Enhanced currency relevance detection
+                base_keywords = self.currency_keywords.get(base_currency, [])
+                quote_keywords = self.currency_keywords.get(quote_currency, [])
+                
+                affects_base = any(keyword in full_text for keyword in base_keywords)
+                affects_quote = any(keyword in full_text for keyword in quote_keywords)
+                
+                # Country-specific indicators
+                country_indicators = {
+                    'USD': ['us ', 'united states', 'american', 'federal reserve', 'fed '],
+                    'EUR': ['european', 'eurozone', 'euro area', 'ecb ', 'eu '],
+                    'GBP': ['uk ', 'british', 'england', 'britain', 'boe '],
+                    'JPY': ['japan', 'japanese', 'boj ', 'tokyo'],
+                    'CHF': ['swiss', 'switzerland', 'snb '],
+                    'AUD': ['australia', 'australian', 'rba '],
+                    'NZD': ['new zealand', 'kiwi', 'rbnz ']
+                }
+                
+                if not affects_base:
+                    affects_base = any(indicator in full_text for indicator in country_indicators.get(base_currency, []))
+                if not affects_quote:
+                    affects_quote = any(indicator in full_text for indicator in country_indicators.get(quote_currency, []))
+                
+                # Apply signal logic
+                if affects_base or affects_quote:
+                    final_direction = signal_direction
+                    
+                    # If only quote currency is affected, consider reversing signal
+                    if affects_quote and not affects_base:
+                        # For quote currency, positive news is bearish for the pair
+                        final_direction = 'bearish' if signal_direction == 'bullish' else 'bullish'
+                        signal_reason += f" (Quote currency {quote_currency} impact)"
+                    elif affects_base:
+                        signal_reason += f" (Base currency {base_currency} impact)"
+                    
+                    # Impact multiplier
+                    impact_multiplier = 3 if news['impact'] == 'High' else 2 if news['impact'] == 'Medium' else 1
+                    final_strength = min(10, signal_strength * impact_multiplier)
+                    
+                    # Time sensitivity - recent news gets higher weight
+                    time_diff = datetime.now() - news['time']
+                    if time_diff.total_seconds() < 3600:  # Less than 1 hour old
+                        final_strength *= 1.2
+                    
+                    fundamental_signals.append({
+                        'direction': final_direction,
+                        'strength': final_strength,
+                        'impact': news['impact'],
+                        'reason': f"{news['source']}: {signal_reason}",
+                        'affects_base': affects_base,
+                        'affects_quote': affects_quote,
+                        'title': news['title'],
+                        'time': news['time']
+                    })
         
-        return fundamental_signals
+        # Sort by strength and return top signals
+        fundamental_signals.sort(key=lambda x: x['strength'], reverse=True)
+        return fundamental_signals[:10]  # Return top 10 signals
 
     def get_forex_factory_news(self):
-        """Scrape news from Forex Factory"""
+        """Enhanced Forex Factory news scraping with fallback methods"""
         try:
             print("📰 Fetching Forex Factory news...")
-            response = requests.get(self.news_sources['forex_factory'], 
-                                  headers=self.headers, timeout=10)
             
-            if response.status_code != 200:
-                return []
-            
-            soup = BeautifulSoup(response.text, 'html.parser')
-            news_items = []
-            
-            # Find calendar events
-            events = soup.find_all('tr', class_='calendar_row')
-            
-            for event in events[:20]:  # Limit to recent events
+            # Try multiple approaches for robust scraping
+            for attempt in range(2):
                 try:
-                    time_elem = event.find('td', class_='calendar__time')
-                    event_elem = event.find('td', class_='calendar__event')
-                    impact_elem = event.find('td', class_='calendar__impact')
+                    response = requests.get(self.news_sources['forex_factory'], 
+                                          headers=self.headers, timeout=15)
                     
-                    if event_elem and impact_elem:
-                        event_text = event_elem.get_text(strip=True)
-                        impact = impact_elem.find('span')
-                        impact_level = impact.get('title', '') if impact else ''
-                        
-                        if 'High' in impact_level or 'Medium' in impact_level:
-                            news_items.append({
-                                'source': 'Forex Factory',
-                                'title': event_text,
-                                'impact': impact_level,
-                                'time': datetime.now(),
-                                'relevance': 'high' if 'High' in impact_level else 'medium'
-                            })
-                except:
+                    if response.status_code != 200:
+                        continue
+                    
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    news_items = []
+                    
+                    # Primary approach - calendar events
+                    events = soup.find_all('tr', class_=['calendar_row', 'calendar__row'])
+                    
+                    for event in events[:25]:
+                        try:
+                            # Extract event details with multiple selectors
+                            event_elem = event.find('td', class_=['calendar__event', 'calendar_event'])
+                            impact_elem = event.find('td', class_=['calendar__impact', 'calendar_impact'])
+                            actual_elem = event.find('td', class_=['calendar__actual', 'calendar_actual'])
+                            forecast_elem = event.find('td', class_=['calendar__forecast', 'calendar_forecast'])
+                            
+                            if event_elem:
+                                event_text = event_elem.get_text(strip=True)
+                                
+                                # Extract impact level
+                                impact_level = 'Medium'
+                                if impact_elem:
+                                    impact_span = impact_elem.find('span')
+                                    if impact_span:
+                                        impact_level = impact_span.get('title', impact_span.get('class', ['Medium'])[0])
+                                        if 'red' in str(impact_span) or 'high' in impact_level.lower():
+                                            impact_level = 'High'
+                                        elif 'yellow' in str(impact_span) or 'medium' in impact_level.lower():
+                                            impact_level = 'Medium'
+                                        else:
+                                            impact_level = 'Low'
+                                
+                                # Extract actual vs forecast if available
+                                context = ""
+                                if actual_elem and forecast_elem:
+                                    actual_text = actual_elem.get_text(strip=True)
+                                    forecast_text = forecast_elem.get_text(strip=True)
+                                    if actual_text and forecast_text:
+                                        context = f"Actual: {actual_text}, Forecast: {forecast_text}"
+                                
+                                if event_text and len(event_text) > 5:
+                                    news_items.append({
+                                        'source': 'Forex Factory',
+                                        'title': event_text,
+                                        'context': context,
+                                        'impact': impact_level,
+                                        'time': datetime.now(),
+                                        'relevance': 'high' if impact_level == 'High' else 'medium'
+                                    })
+                        except:
+                            continue
+                    
+                    # Fallback approach - news sections
+                    if not news_items:
+                        news_sections = soup.find_all(['div', 'article'], class_=lambda x: x and 'news' in x.lower())
+                        for section in news_sections[:15]:
+                            try:
+                                title_elem = section.find(['h1', 'h2', 'h3', 'h4', 'a'])
+                                if title_elem:
+                                    title = title_elem.get_text(strip=True)
+                                    if title and len(title) > 10:
+                                        impact_level = self.determine_news_impact(title)
+                                        news_items.append({
+                                            'source': 'Forex Factory',
+                                            'title': title,
+                                            'context': '',
+                                            'impact': impact_level,
+                                            'time': datetime.now(),
+                                            'relevance': 'medium'
+                                        })
+                            except:
+                                continue
+                    
+                    if news_items:
+                        print(f"✅ Found {len(news_items)} Forex Factory events")
+                        return news_items
+                    
+                except Exception as e:
+                    print(f"❌ Forex Factory attempt {attempt + 1} failed: {e}")
                     continue
             
-            print(f"✅ Found {len(news_items)} Forex Factory events")
-            return news_items
+            print("⚠️ Forex Factory scraping failed, using fallback")
+            return []
             
         except Exception as e:
             print(f"❌ Error fetching Forex Factory news: {e}")
             return []
+
+    def get_backup_news_sources(self, currency_pair):
+        """Get news from backup sources when primary sources fail"""
+        backup_news = []
+        
+        # Simple RSS/API-based sources as fallback
+        backup_sources = [
+            'https://feeds.finance.yahoo.com/rss/2.0/headline?s=EURUSD=X&region=US&lang=en-US',
+            'https://feeds.finance.yahoo.com/rss/2.0/headline?s=GBPUSD=X&region=US&lang=en-US',
+        ]
+        
+        for source in backup_sources:
+            try:
+                response = requests.get(source, headers=self.headers, timeout=10)
+                if response.status_code == 200:
+                    # Basic RSS parsing
+                    soup = BeautifulSoup(response.text, 'xml')
+                    items = soup.find_all('item')
+                    
+                    for item in items[:10]:
+                        try:
+                            title = item.find('title')
+                            if title:
+                                title_text = title.get_text(strip=True)
+                                if len(title_text) > 15:
+                                    backup_news.append({
+                                        'source': 'Yahoo Finance',
+                                        'title': title_text,
+                                        'context': '',
+                                        'impact': self.determine_news_impact(title_text),
+                                        'time': datetime.now(),
+                                        'relevance': 'medium'
+                                    })
+                        except:
+                            continue
+            except:
+                continue
+        
+        return backup_news
 
     def analyze_enhanced_news_sentiment(self, news_items, currency_pair):
         """Enhanced sentiment analysis with fundamental priority logic"""
@@ -432,43 +709,126 @@ class NewsAnalyzer:
         }
 
     def get_comprehensive_news_analysis(self, currency_pair):
-        """Get comprehensive news analysis for currency pair with FXStreet integration"""
+        """Enhanced comprehensive news analysis with robust error handling and fallbacks"""
         try:
             print(f"📊 Enhanced news analysis for {currency_pair}...")
             
             all_news = []
+            source_counts = {}
             
-            # Collect news from multiple sources including FXStreet
-            fxstreet_news = self.get_fxstreet_news()
-            fxstreet_calendar = self.get_fxstreet_economic_calendar()
-            forex_factory_news = self.get_forex_factory_news()
+            # Primary news sources with individual error handling
+            news_sources = [
+                ('FXStreet', self.get_fxstreet_news),
+                ('FXStreet Calendar', self.get_fxstreet_economic_calendar),
+                ('Forex Factory', self.get_forex_factory_news),
+            ]
             
-            all_news.extend(fxstreet_news)
-            all_news.extend(fxstreet_calendar)
-            all_news.extend(forex_factory_news)
+            for source_name, source_func in news_sources:
+                try:
+                    print(f"🔍 Fetching from {source_name}...")
+                    news_items = source_func()
+                    if news_items:
+                        all_news.extend(news_items)
+                        source_counts[source_name] = len(news_items)
+                        print(f"✅ {source_name}: {len(news_items)} articles")
+                    else:
+                        print(f"⚠️ {source_name}: No articles found")
+                        source_counts[source_name] = 0
+                except Exception as e:
+                    print(f"❌ {source_name} failed: {e}")
+                    source_counts[source_name] = 0
+            
+            # If primary sources fail, try backup sources
+            if len(all_news) < 5:
+                print("🔄 Using backup news sources...")
+                try:
+                    backup_news = self.get_backup_news_sources(currency_pair)
+                    if backup_news:
+                        all_news.extend(backup_news)
+                        source_counts['Backup Sources'] = len(backup_news)
+                        print(f"✅ Backup sources: {len(backup_news)} articles")
+                except Exception as e:
+                    print(f"❌ Backup sources failed: {e}")
+            
+            # Filter and deduplicate news
+            if all_news:
+                print(f"🔍 Processing {len(all_news)} total news items...")
+                
+                # Remove duplicates and filter by relevance
+                unique_news = []
+                seen_titles = set()
+                
+                for news in all_news:
+                    title_key = re.sub(r'[^a-zA-Z0-9\s]', '', news['title'].lower())
+                    title_key = re.sub(r'\s+', ' ', title_key).strip()
+                    
+                    if title_key not in seen_titles and len(title_key) > 10:
+                        # Check currency relevance
+                        base_currency = currency_pair[:3]
+                        quote_currency = currency_pair[4:7] if len(currency_pair) > 6 else 'USD'
+                        
+                        title_lower = news['title'].lower()
+                        context_lower = news.get('context', '').lower()
+                        full_text = f"{title_lower} {context_lower}"
+                        
+                        # Enhanced relevance check
+                        is_relevant = False
+                        
+                        # Currency-specific keywords
+                        for currency in [base_currency, quote_currency]:
+                            if currency in self.currency_keywords:
+                                if any(keyword in full_text for keyword in self.currency_keywords[currency]):
+                                    is_relevant = True
+                                    break
+                        
+                        # General forex relevance
+                        if not is_relevant:
+                            forex_terms = ['forex', 'currency', 'exchange rate', 'central bank', 'monetary policy']
+                            is_relevant = any(term in full_text for term in forex_terms)
+                        
+                        if is_relevant or news['impact'] == 'High':
+                            seen_titles.add(title_key)
+                            unique_news.append(news)
+                
+                print(f"✅ Filtered to {len(unique_news)} relevant news items")
+                all_news = unique_news
             
             # Analyze sentiment with enhanced fundamental logic
             sentiment_analysis = self.analyze_enhanced_news_sentiment(all_news, currency_pair)
             
-            # Add additional context
-            sentiment_analysis['total_news_sources'] = len([n for n in all_news if n])
-            sentiment_analysis['analysis_time'] = datetime.now()
-            sentiment_analysis['fxstreet_count'] = len(fxstreet_news) + len(fxstreet_calendar)
+            # Add comprehensive metadata
+            sentiment_analysis.update({
+                'total_news_sources': len([count for count in source_counts.values() if count > 0]),
+                'analysis_time': datetime.now(),
+                'source_breakdown': source_counts,
+                'total_articles_fetched': sum(source_counts.values()),
+                'total_relevant_articles': len(all_news),
+                'currency_pair': currency_pair,
+                'data_quality': 'high' if len(all_news) >= 10 else 'medium' if len(all_news) >= 5 else 'low'
+            })
             
+            # Enhanced logging
             print(f"✅ Enhanced news analysis complete for {currency_pair}")
-            print(f"   Sentiment: {sentiment_analysis['sentiment']} ({sentiment_analysis['score']})")
-            print(f"   Priority: {sentiment_analysis['priority'].upper()}")
-            print(f"   High Impact News: {sentiment_analysis['high_impact_count']}")
-            print(f"   FXStreet Articles: {sentiment_analysis['fxstreet_count']}")
-            print(f"   Fundamental Signals: {len(sentiment_analysis['fundamental_signals'])}")
+            print(f"   📊 Data Quality: {sentiment_analysis['data_quality'].upper()}")
+            print(f"   🎯 Sentiment: {sentiment_analysis['sentiment'].upper()} ({sentiment_analysis['score']})")
+            print(f"   ⚖️ Priority: {sentiment_analysis['priority'].upper()}")
+            print(f"   🔥 High Impact News: {sentiment_analysis['high_impact_count']}")
+            print(f"   📈 Fundamental Signals: {len(sentiment_analysis['fundamental_signals'])}")
+            print(f"   📰 Total Relevant Articles: {sentiment_analysis['total_relevant_articles']}")
             
             return sentiment_analysis
             
         except Exception as e:
-            print(f"❌ Error in enhanced news analysis for {currency_pair}: {e}")
+            print(f"❌ Critical error in enhanced news analysis for {currency_pair}: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Return safe fallback
             return {
                 'score': 0, 'relevance': 'none', 'news_count': 0, 'sentiment': 'neutral',
-                'fundamental_signals': [], 'high_impact_count': 0, 'priority': 'technical'
+                'fundamental_signals': [], 'high_impact_count': 0, 'priority': 'technical',
+                'total_news_sources': 0, 'analysis_time': datetime.now(),
+                'source_breakdown': {}, 'data_quality': 'low', 'currency_pair': currency_pair
             }
 
     def get_gold_specific_news(self):
