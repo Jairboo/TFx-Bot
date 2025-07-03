@@ -850,27 +850,93 @@ def generate_market_signal(market_name, symbol):
         # Get fundamental analysis first
         fundamental_score, fundamental_reasons = get_market_sentiment(symbol)
         
-        # Enhanced news sentiment analysis
+        # Enhanced news sentiment analysis with FXStreet integration
+        news_priority = 'technical'  # Default priority
+        fundamental_boost = 0
+        
         try:
             if market_name == 'XAU/USD':
                 news_sentiment = news_analyzer.get_gold_specific_news()
             else:
                 news_sentiment = news_analyzer.get_comprehensive_news_analysis(market_name)
             
-            if news_sentiment and news_sentiment.get('score', 0) != 0:
-                news_score = news_sentiment['score']
+            if news_sentiment:
+                news_score = news_sentiment.get('score', 0)
                 news_relevance = news_sentiment.get('relevance', 'none')
                 news_count = news_sentiment.get('news_count', 0)
+                high_impact_count = news_sentiment.get('high_impact_count', 0)
+                news_priority = news_sentiment.get('priority', 'technical')
+                fundamental_signals = news_sentiment.get('fundamental_signals', [])
                 
-                # Weight news sentiment based on relevance and count
-                news_weight = 1.0
-                if news_relevance == 'high' and news_count >= 5:
-                    news_weight = 2.0
-                elif news_relevance == 'medium' and news_count >= 3:
-                    news_weight = 1.5
+                print(f"📰 News Analysis for {market_name}:")
+                print(f"   Priority: {news_priority.upper()}")
+                print(f"   Sentiment: {news_sentiment['sentiment']} ({news_score})")
+                print(f"   High Impact News: {high_impact_count}")
+                print(f"   Fundamental Signals: {len(fundamental_signals)}")
                 
-                weighted_news_score = int(news_score * news_weight)
-                fundamental_score += weighted_news_score
+                # Apply fundamental priority logic
+                if news_priority == 'fundamental':
+                    print(f"🎯 FUNDAMENTAL PRIORITY ACTIVATED for {market_name}")
+                    
+                    # Apply fundamental signals with higher weight
+                    for signal in fundamental_signals:
+                        signal_weight = 8 if signal['impact'] == 'High' else 5
+                        
+                        if signal['direction'] == 'bullish':
+                            fundamental_boost += signal_weight
+                            critical_factors += 1
+                            reasons.append(f"📈 {signal['reason'][:50]}...")
+                        else:
+                            fundamental_boost -= signal_weight
+                            critical_factors += 1
+                            reasons.append(f"📉 {signal['reason'][:50]}...")
+                    
+                    # High impact news gets major boost
+                    if high_impact_count >= 2:
+                        if news_score > 0:
+                            bullish_signals += 15  # Major fundamental boost
+                            critical_factors += 2
+                            reasons.append(f"🚨 Multiple High-Impact Bullish News ({high_impact_count})")
+                        else:
+                            bearish_signals += 15
+                            critical_factors += 2
+                            reasons.append(f"🚨 Multiple High-Impact Bearish News ({high_impact_count})")
+                    
+                    # Single high impact news
+                    elif high_impact_count >= 1:
+                        if news_score > 0:
+                            bullish_signals += 10
+                            critical_factors += 1
+                            reasons.append(f"📊 High-Impact Bullish Fundamental")
+                        else:
+                            bearish_signals += 10
+                            critical_factors += 1
+                            reasons.append(f"📊 High-Impact Bearish Fundamental")
+                
+                else:
+                    # Technical priority - apply lighter fundamental weight
+                    print(f"⚙️ TECHNICAL PRIORITY for {market_name}")
+                    
+                    # Weight news sentiment based on relevance and count
+                    news_weight = 1.0
+                    if news_relevance == 'high' and news_count >= 3:
+                        news_weight = 1.5
+                    elif news_relevance == 'medium' and news_count >= 2:
+                        news_weight = 1.2
+                    
+                    weighted_news_score = int(news_score * news_weight)
+                    fundamental_score += weighted_news_score
+                    
+                    # Add moderate fundamental signals
+                    for signal in fundamental_signals[:2]:  # Limit to top 2 signals
+                        signal_weight = 3 if signal['impact'] == 'High' else 2
+                        
+                        if signal['direction'] == 'bullish':
+                            bullish_signals += signal_weight
+                            reasons.append(f"📈 {signal['reason'][:40]}...")
+                        else:
+                            bearish_signals += signal_weight
+                            reasons.append(f"📉 {signal['reason'][:40]}...")
                 
                 # Add news-based reasons
                 if news_score > 2:
@@ -880,8 +946,6 @@ def generate_market_signal(market_name, symbol):
                 
                 if news_count > 0:
                     fundamental_reasons.append(f"📊 {news_count} Relevant News Items")
-                    
-                print(f"📰 News Sentiment for {market_name}: {news_sentiment['sentiment']} ({news_score})")
                 
         except Exception as e:
             print(f"⚠️ News sentiment analysis error for {market_name}: {e}")
@@ -1094,7 +1158,7 @@ def generate_market_signal(market_name, symbol):
         else:
             bearish_signals += abs(fundamental_score)
 
-        # Enhanced confidence calculation with alternative data factors
+        # Enhanced confidence calculation with fundamental/technical priority weighting
         total_signals = bullish_signals + bearish_signals
         min_critical_factors = 2
 
@@ -1109,6 +1173,16 @@ def generate_market_signal(market_name, symbol):
         if 'metals_data' in data_dict:
             data_quality_bonus += 3  # Precious metals data
 
+        # Fundamental priority bonus
+        priority_bonus = 0
+        if news_priority == 'fundamental':
+            priority_bonus = 8  # Higher confidence for fundamental-driven signals
+            min_critical_factors = 1  # Lower threshold for fundamental signals
+            print(f"📊 Fundamental priority bonus applied: +{priority_bonus}%")
+        else:
+            priority_bonus = 2  # Small bonus for technical priority
+            print(f"⚙️ Technical priority maintained")
+
         if total_signals == 0 or critical_factors < min_critical_factors:
             confidence = 0
             direction = "WAIT"
@@ -1116,13 +1190,34 @@ def generate_market_signal(market_name, symbol):
             if bullish_signals > bearish_signals:
                 base_confidence = (bullish_signals / total_signals) * 100
                 critical_boost = min(15, critical_factors * 5)
-                confidence = min(98, int(base_confidence + critical_boost + data_quality_bonus))
-                direction = "BUY" if confidence >= 85 else "WAIT"
+                
+                # Apply fundamental boost if applicable
+                if news_priority == 'fundamental' and fundamental_boost > 0:
+                    fundamental_confidence_boost = min(12, abs(fundamental_boost))
+                else:
+                    fundamental_confidence_boost = 0
+                
+                confidence = min(98, int(base_confidence + critical_boost + data_quality_bonus + priority_bonus + fundamental_confidence_boost))
+                
+                # Lower threshold for fundamental-driven signals
+                threshold = 80 if news_priority == 'fundamental' else 85
+                direction = "BUY" if confidence >= threshold else "WAIT"
+                
             else:
                 base_confidence = (bearish_signals / total_signals) * 100
                 critical_boost = min(15, critical_factors * 5)
-                confidence = min(98, int(base_confidence + critical_boost + data_quality_bonus))
-                direction = "SELL" if confidence >= 85 else "WAIT"
+                
+                # Apply fundamental boost if applicable
+                if news_priority == 'fundamental' and fundamental_boost < 0:
+                    fundamental_confidence_boost = min(12, abs(fundamental_boost))
+                else:
+                    fundamental_confidence_boost = 0
+                
+                confidence = min(98, int(base_confidence + critical_boost + data_quality_bonus + priority_bonus + fundamental_confidence_boost))
+                
+                # Lower threshold for fundamental-driven signals
+                threshold = 80 if news_priority == 'fundamental' else 85
+                direction = "SELL" if confidence >= threshold else "WAIT"
 
         # Enhanced stop loss and take profit calculation
         atr = latest.get('ATR', (latest.get('High', price) - latest.get('Low', price)))
@@ -1160,7 +1255,9 @@ def generate_market_signal(market_name, symbol):
             "bearish_points": bearish_signals,
             "technical_score": bullish_signals + bearish_signals,
             "fundamental_score": abs(fundamental_score),
-            "critical_factors": critical_factors
+            "critical_factors": critical_factors,
+            "priority": news_priority,
+            "fundamental_boost": fundamental_boost
         }
 
         # Apply alternative data enhancements
@@ -1209,6 +1306,9 @@ def broadcast_signal(signal):
 
     risk_reward = abs(signal['take_profit'] - signal['entry']) / abs(signal['entry'] - signal['stop_loss'])
 
+    priority_emoji = "📊" if signal.get('priority') == 'fundamental' else "⚙️"
+    priority_text = signal.get('priority', 'technical').upper()
+    
     msg = (f"🎯 *ULTRA-PRECISION SIGNAL* 🎯\n"
            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
            f"📈 Market: *{signal['market']}*\n"
@@ -1218,6 +1318,7 @@ def broadcast_signal(signal):
            f"🎯 Take Profit: *{signal['take_profit']}*\n"
            f"📊 Confidence: *{signal['confidence']}%*\n"
            f"⚖️ Risk:Reward: *1:{risk_reward:.2f}*\n"
+           f"{priority_emoji} Priority: *{priority_text}*\n"
            f"🔬 Technical Score: *{signal['technical_score']}*\n"
            f"📰 Fundamental Score: *{signal['fundamental_score']}*\n\n"
            f"📋 *Key Factors:*\n• " + "\n• ".join(signal['reasons'][:6]))
