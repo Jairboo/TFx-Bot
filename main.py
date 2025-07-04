@@ -1158,12 +1158,49 @@ def generate_market_signal(market_name, symbol):
         else:
             bearish_signals += abs(fundamental_score)
 
-        # ULTRA-CONSERVATIVE CONFIDENCE CALCULATION - MUCH STRICTER REQUIREMENTS
-        total_signals = bullish_signals + bearish_signals
-        min_critical_factors = 4  # INCREASED from 2 to 4 - much stricter
-        min_total_signals = 25    # NEW: Minimum total signal strength required
+        # ENHANCED FALLBACK MECHANISM - Check if fundamentals are weak and switch to technical priority
+        fundamental_fallback_activated = False
+        if news_priority == 'fundamental':
+            strong_fundamental_signals = len([s for s in fundamental_signals if s.get('strength', 0) > 5])
+            
+            # Check if fundamental analysis is insufficient
+            if (strong_fundamental_signals < 2 or 
+                abs(fundamental_boost) < 3 or 
+                len(fundamental_signals) == 0):
+                
+                print(f"🔄 FUNDAMENTAL FALLBACK ACTIVATED - Switching to technical priority")
+                print(f"   Reason: Strong signals: {strong_fundamental_signals}, Boost: {fundamental_boost}, Total signals: {len(fundamental_signals)}")
+                news_priority = 'technical'  # Switch to technical priority
+                fundamental_fallback_activated = True
+                
+                # Add technical priority boost for cleaner technical signals
+                technical_boost = 0
+                if critical_factors >= 2:
+                    technical_boost += 3
+                    reasons.append("⚙️ Clean technical setup detected")
+                
+                # Boost technical signals when fundamentals are absent
+                if bullish_signals > bearish_signals:
+                    bullish_signals += technical_boost
+                else:
+                    bearish_signals += technical_boost
 
-        # Data quality requirements - STRICTER
+        # ADAPTIVE CONFIDENCE CALCULATION - Different standards for technical vs fundamental
+        total_signals = bullish_signals + bearish_signals
+        
+        # Set requirements based on priority (more lenient for technical when fundamentals fail)
+        if news_priority == 'fundamental' and not fundamental_fallback_activated:
+            min_critical_factors = 4
+            min_total_signals = 25
+            min_dominance = 0.75
+            confidence_threshold = 88
+        else:  # Technical priority or fundamental fallback
+            min_critical_factors = 3  # More lenient for pure technical
+            min_total_signals = 20    # Lower requirement for technical
+            min_dominance = 0.70      # Slightly more lenient dominance
+            confidence_threshold = 85  # Lower threshold for technical
+
+        # Data quality requirements - More flexible for technical analysis
         data_quality_bonus = 0
         data_quality_requirements = 0
         
@@ -1180,76 +1217,82 @@ def generate_market_signal(market_name, symbol):
             data_quality_bonus += 3
             data_quality_requirements += 1
 
-        # REQUIRE MINIMUM DATA SOURCES
-        if data_quality_requirements < 2:
-            print(f"❌ Insufficient data sources ({data_quality_requirements}/2 minimum)")
+        # More lenient data requirements for technical analysis
+        min_data_sources = 2 if news_priority == 'fundamental' else 1
+        
+        # VALIDATION CHECKS
+        if data_quality_requirements < min_data_sources:
+            print(f"❌ Insufficient data sources ({data_quality_requirements}/{min_data_sources} minimum for {news_priority})")
             confidence = 0
             direction = "WAIT"
         elif total_signals < min_total_signals:
-            print(f"❌ Insufficient signal strength ({total_signals}/{min_total_signals} minimum)")
+            print(f"❌ Insufficient signal strength ({total_signals}/{min_total_signals} minimum for {news_priority})")
             confidence = 0
             direction = "WAIT"
         elif critical_factors < min_critical_factors:
-            print(f"❌ Insufficient critical factors ({critical_factors}/{min_critical_factors} minimum)")
+            print(f"❌ Insufficient critical factors ({critical_factors}/{min_critical_factors} minimum for {news_priority})")
             confidence = 0
             direction = "WAIT"
         else:
-            # Calculate confidence with MUCH higher standards
+            # Calculate confidence with adaptive standards
             signal_dominance = max(bullish_signals, bearish_signals) / total_signals
             
-            # REQUIRE CLEAR DOMINANCE (75%+ of signals must agree)
-            if signal_dominance < 0.75:
-                print(f"❌ Insufficient signal dominance ({signal_dominance:.2%} < 75% required)")
+            # Check signal dominance
+            if signal_dominance < min_dominance:
+                print(f"❌ Insufficient signal dominance ({signal_dominance:.2%} < {min_dominance:.0%} required for {news_priority})")
                 confidence = 0
                 direction = "WAIT"
             else:
                 if bullish_signals > bearish_signals:
                     base_confidence = signal_dominance * 100
-                    critical_boost = min(10, critical_factors * 2)  # REDUCED boost
+                    critical_boost = min(8, critical_factors * 2)
                     
-                    # Apply fundamental boost more conservatively
-                    fundamental_confidence_boost = 0
-                    if news_priority == 'fundamental' and fundamental_boost > 5:  # HIGHER threshold
-                        fundamental_confidence_boost = min(8, abs(fundamental_boost) * 0.5)  # REDUCED boost
+                    # Apply boost based on priority
+                    priority_boost = 0
+                    if news_priority == 'fundamental' and not fundamental_fallback_activated:
+                        if fundamental_boost > 5:
+                            priority_boost = min(8, abs(fundamental_boost) * 0.5)
+                    else:  # Technical priority
+                        # Technical analysis gets boost for clean setups
+                        if critical_factors >= 3:
+                            priority_boost += 4
+                            reasons.append("⚙️ Strong technical confluence")
+                        if fundamental_fallback_activated:
+                            priority_boost += 2
+                            reasons.append("🔄 Technical fallback engaged")
                     
-                    confidence = min(95, int(base_confidence + critical_boost + data_quality_bonus + fundamental_confidence_boost))
-                    
-                    # MUCH HIGHER THRESHOLDS
-                    if news_priority == 'fundamental':
-                        threshold = 88  # INCREASED from 80
-                        min_fundamental_signals = 3  # NEW: Require multiple fundamental signals
-                        if len([s for s in fundamental_signals if s['strength'] > 5]) < min_fundamental_signals:
-                            print(f"❌ Insufficient strong fundamental signals")
-                            direction = "WAIT"
-                        else:
-                            direction = "BUY" if confidence >= threshold else "WAIT"
-                    else:
-                        threshold = 92  # INCREASED from 85
-                        direction = "BUY" if confidence >= threshold else "WAIT"
+                    confidence = min(95, int(base_confidence + critical_boost + data_quality_bonus + priority_boost))
+                    direction = "BUY" if confidence >= confidence_threshold else "WAIT"
                     
                 else:
                     base_confidence = signal_dominance * 100
-                    critical_boost = min(10, critical_factors * 2)  # REDUCED boost
+                    critical_boost = min(8, critical_factors * 2)
                     
-                    # Apply fundamental boost more conservatively
-                    fundamental_confidence_boost = 0
-                    if news_priority == 'fundamental' and fundamental_boost < -5:  # HIGHER threshold
-                        fundamental_confidence_boost = min(8, abs(fundamental_boost) * 0.5)  # REDUCED boost
+                    # Apply boost based on priority
+                    priority_boost = 0
+                    if news_priority == 'fundamental' and not fundamental_fallback_activated:
+                        if fundamental_boost < -5:
+                            priority_boost = min(8, abs(fundamental_boost) * 0.5)
+                    else:  # Technical priority
+                        # Technical analysis gets boost for clean setups
+                        if critical_factors >= 3:
+                            priority_boost += 4
+                            reasons.append("⚙️ Strong technical confluence")
+                        if fundamental_fallback_activated:
+                            priority_boost += 2
+                            reasons.append("🔄 Technical fallback engaged")
                     
-                    confidence = min(95, int(base_confidence + critical_boost + data_quality_bonus + fundamental_confidence_boost))
-                    
-                    # MUCH HIGHER THRESHOLDS
-                    if news_priority == 'fundamental':
-                        threshold = 88  # INCREASED from 80
-                        min_fundamental_signals = 3  # NEW: Require multiple fundamental signals
-                        if len([s for s in fundamental_signals if s['strength'] > 5]) < min_fundamental_signals:
-                            print(f"❌ Insufficient strong fundamental signals")
-                            direction = "WAIT"
-                        else:
-                            direction = "SELL" if confidence >= threshold else "WAIT"
-                    else:
-                        threshold = 92  # INCREASED from 85
-                        direction = "SELL" if confidence >= threshold else "WAIT"
+                    confidence = min(95, int(base_confidence + critical_boost + data_quality_bonus + priority_boost))
+                    direction = "SELL" if confidence >= confidence_threshold else "WAIT"
+
+        # Log the analysis method used
+        if direction != "WAIT":
+            if fundamental_fallback_activated:
+                print(f"✅ TECHNICAL FALLBACK SUCCESS: {market_name} | {direction} | {confidence}% confidence")
+            elif news_priority == 'fundamental':
+                print(f"✅ FUNDAMENTAL ANALYSIS: {market_name} | {direction} | {confidence}% confidence")
+            else:
+                print(f"✅ TECHNICAL ANALYSIS: {market_name} | {direction} | {confidence}% confidence")
 
         # ADDITIONAL SAFETY CHECKS
         if direction != "WAIT":
@@ -1441,19 +1484,52 @@ def job():
         for market_name, symbol in MARKETS.items():
             signal = generate_market_signal(market_name, symbol)
 
-            # ULTRA-STRICT SIGNAL REQUIREMENTS
-            if (signal and signal['direction'] != "WAIT" and 
-                signal['confidence'] >= 90 and  # INCREASED from 85 to 90
-                signal.get('critical_factors', 0) >= 4 and  # INCREASED from 2 to 4
-                signal.get('bullish_points', 0) + signal.get('bearish_points', 0) >= 25):  # NEW: Minimum total signals
-
-                # ADDITIONAL VALIDATION CHECKS
-                risk_reward = abs(signal['take_profit'] - signal['entry']) / abs(signal['entry'] - signal['stop_loss'])
-                if risk_reward >= 1.5:  # Minimum 1:1.5 risk-reward ratio
-                    high_confidence_signals.append(signal)
-                    print(f"🎯 ULTRA-HIGH-CONFIDENCE SIGNAL: {market_name} | {signal['direction']} | {signal['confidence']}% | RR: 1:{risk_reward:.2f}")
+            # ADAPTIVE SIGNAL REQUIREMENTS based on analysis method
+            if signal and signal['direction'] != "WAIT":
+                analysis_method = signal.get('priority', 'technical')
+                fallback_used = 'Technical fallback engaged' in signal.get('reasons', [])
+                
+                # Set requirements based on analysis method
+                if analysis_method == 'fundamental' and not fallback_used:
+                    # Strict requirements for fundamental analysis
+                    min_confidence = 88
+                    min_critical_factors = 4
+                    min_total_signals = 25
+                elif fallback_used or analysis_method == 'technical':
+                    # More lenient requirements for technical analysis
+                    min_confidence = 85
+                    min_critical_factors = 3
+                    min_total_signals = 20
                 else:
-                    print(f"⚠️ Signal rejected for poor risk-reward: {market_name} | RR: 1:{risk_reward:.2f}")
+                    # Default requirements
+                    min_confidence = 87
+                    min_critical_factors = 3
+                    min_total_signals = 22
+
+                # Check signal requirements
+                if (signal['confidence'] >= min_confidence and 
+                    signal.get('critical_factors', 0) >= min_critical_factors and  
+                    signal.get('bullish_points', 0) + signal.get('bearish_points', 0) >= min_total_signals):
+
+                    # ADDITIONAL VALIDATION CHECKS
+                    risk_reward = abs(signal['take_profit'] - signal['entry']) / abs(signal['entry'] - signal['stop_loss'])
+                    if risk_reward >= 1.5:  # Minimum 1:1.5 risk-reward ratio
+                        high_confidence_signals.append(signal)
+                        method_label = "FUNDAMENTAL" if analysis_method == 'fundamental' and not fallback_used else "TECHNICAL" + (" FALLBACK" if fallback_used else "")
+                        print(f"🎯 {method_label} SIGNAL: {market_name} | {signal['direction']} | {signal['confidence']}% | RR: 1:{risk_reward:.2f}")
+                    else:
+                        print(f"⚠️ Signal rejected for poor risk-reward: {market_name} | RR: 1:{risk_reward:.2f}")
+                else:
+                    reasons = []
+                    if signal['confidence'] < min_confidence:
+                        reasons.append(f"confidence {signal['confidence']}% < {min_confidence}%")
+                    if signal.get('critical_factors', 0) < min_critical_factors:
+                        reasons.append(f"critical factors {signal.get('critical_factors', 0)} < {min_critical_factors}")
+                    if signal.get('bullish_points', 0) + signal.get('bearish_points', 0) < min_total_signals:
+                        total = signal.get('bullish_points', 0) + signal.get('bearish_points', 0)
+                        reasons.append(f"total signals {total} < {min_total_signals}")
+                    
+                    print(f"⚠️ Signal rejected for {market_name}: {', '.join(reasons)}")
 
         # Send signals
         for signal in high_confidence_signals:
@@ -1476,19 +1552,23 @@ def main():
     schedule.every().hour.at(":00").do(job)
     schedule.every(30).seconds.do(handle_telegram_commands)
 
-    print("🚀 Ultra-Safe Trading Bot v9.0 - MAXIMUM ACCURACY MODE 🚀")
+    print("🚀 Ultra-Safe Trading Bot v10.0 - ADAPTIVE ANALYSIS MODE 🚀")
     print("📊 Markets: Gold + 8 Forex pairs + 2 Crypto")
-    print("🔥 Enhanced with Multiple Data Sources + STRICT VALIDATION")
+    print("🔥 Enhanced with Adaptive Priority + Fallback Mechanism")
     print("📈 Yahoo Finance + CoinGecko + Economic Data + Forex APIs")
     print("💎 Real-time rates + Sentiment + Market structure")
     print("🕯️ Price Action + Technical + Fundamental Analysis")
-    print("🎯 90%+ confidence + 4+ critical factors + 25+ total signals required")
+    print("🎯 ADAPTIVE REQUIREMENTS:")
+    print("   • Fundamental: 88%+ confidence, 4+ critical factors, 25+ signals")
+    print("   • Technical: 85%+ confidence, 3+ critical factors, 20+ signals")
+    print("🔄 INTELLIGENT FALLBACK:")
+    print("   • Weak fundamentals → Switch to technical analysis")
+    print("   • Enhanced technical validation for clean setups")
     print("🛡️ ULTRA-CONSERVATIVE RISK MANAGEMENT:")
     print("   • Maximum 1.5% risk per trade")
     print("   • Minimum 1:1.5 risk-reward ratio")
     print("   • Support/Resistance based stops")
-    print("   • Multiple data source validation required")
-    print("   • 75%+ signal dominance required")
+    print("   • 70-75% signal dominance required")
     print("⏰ Analyzing all markets every hour...")
     print("🤖 Telegram bot active - /start to subscribe")
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
