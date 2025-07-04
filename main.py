@@ -1476,12 +1476,50 @@ def broadcast_signal(signal):
 
 
 # --- MAIN JOB ---
+def is_market_open(market_name):
+    """Check if market is open based on current time and market type"""
+    from datetime import datetime, timezone
+    
+    # Get current time in GMT
+    now_gmt = datetime.now(timezone.utc)
+    current_weekday = now_gmt.weekday()  # 0=Monday, 6=Sunday
+    current_hour = now_gmt.hour
+    
+    # Check if it's weekend (Friday 22:00 GMT to Sunday 22:00 GMT)
+    is_weekend = False
+    
+    if current_weekday == 4:  # Friday
+        is_weekend = current_hour >= 22  # After 10 PM GMT Friday
+    elif current_weekday == 5:  # Saturday
+        is_weekend = True  # All day Saturday
+    elif current_weekday == 6:  # Sunday
+        is_weekend = current_hour < 22  # Before 10 PM GMT Sunday
+    
+    # Forex and commodity markets (close on weekends)
+    if market_name in ['XAU/USD', 'EUR/USD', 'USD/JPY', 'GBP/USD', 'USD/CHF', 
+                       'AUD/USD', 'NZD/USD', 'EUR/CHF', 'EUR/GBP']:
+        if is_weekend:
+            print(f"⏰ {market_name} market closed (weekend)")
+            return False
+        return True
+    
+    # Crypto markets (24/7)
+    elif market_name in ['BTC/USD', 'ETH/USD']:
+        return True
+    
+    return True  # Default to open for any other markets
+
+
 def job():
     try:
         print("🔍 Starting multi-market analysis...")
         high_confidence_signals = []
 
         for market_name, symbol in MARKETS.items():
+            # Check if market is open before analysis
+            if not is_market_open(market_name):
+                continue
+                
             signal = generate_market_signal(market_name, symbol)
 
             # ADAPTIVE SIGNAL REQUIREMENTS based on analysis method
@@ -1569,6 +1607,9 @@ def main():
     print("   • Minimum 1:1.5 risk-reward ratio")
     print("   • Support/Resistance based stops")
     print("   • 70-75% signal dominance required")
+    print("⏰ MARKET HOURS AWARENESS:")
+    print("   • Forex/Gold: Monday 00:00 - Friday 22:00 GMT")
+    print("   • Crypto: 24/7 analysis (BTC/ETH only on weekends)")
     print("⏰ Analyzing all markets every hour...")
     print("🤖 Telegram bot active - /start to subscribe")
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
