@@ -401,17 +401,25 @@ class NewsAnalyzer:
             signal_direction = None
             signal_reason = ""
 
-            # Advanced actual vs forecast patterns
+            # Enhanced actual vs forecast patterns with more comprehensive coverage
             actual_forecast_patterns = [
                 # Numerical patterns
                 r'actual[:\s]*([+-]?\d+\.?\d*)[%]?\s*[vs\.]*\s*forecast[:\s]*([+-]?\d+\.?\d*)[%]?',
                 r'([+-]?\d+\.?\d*)[%]?\s*vs[\.]*\s*([+-]?\d+\.?\d*)[%]?\s*forecast',
                 r'([+-]?\d+\.?\d*)[%]?\s*actual[,\s]*([+-]?\d+\.?\d*)[%]?\s*expected',
                 r'came\s+in\s+at\s+([+-]?\d+\.?\d*)[%]?\s*[vs\.]*\s*([+-]?\d+\.?\d*)[%]?\s*expected',
-                # Qualitative patterns
+                # Enhanced qualitative patterns
                 r'beats?\s*forecast', r'misses?\s*forecast', r'exceeds?\s*expectations',
                 r'below\s*expectations', r'above\s*expectations', r'better\s*than\s*expected',
-                r'worse\s*than\s*expected', r'disappointing', r'strong\s*data', r'weak\s*data'
+                r'worse\s*than\s*expected', r'disappointing', r'strong\s*data', r'weak\s*data',
+                # Central bank and policy patterns
+                r'raises?\s*interest\s*rate', r'cuts?\s*interest\s*rate', r'holds?\s*rates?\s*steady',
+                r'dovish\s*stance', r'hawkish\s*stance', r'monetary\s*policy\s*shift',
+                # Economic indicator patterns
+                r'gdp\s*grows?', r'gdp\s*shrinks?', r'inflation\s*rises?', r'inflation\s*falls?',
+                r'unemployment\s*rises?', r'unemployment\s*falls?', r'employment\s*gains?',
+                # Market sentiment patterns
+                r'bullish\s*outlook', r'bearish\s*outlook', r'positive\s*sentiment', r'negative\s*sentiment'
             ]
 
             # Check for numerical actual vs forecast
@@ -436,14 +444,19 @@ class NewsAnalyzer:
                     except:
                         continue
 
-            # Enhanced qualitative analysis
+            # Enhanced qualitative analysis with broader pattern matching
             if not signal_direction:
                 qualitative_signals = {
                     'bullish': [
                         'beats forecast', 'exceeds expectations', 'above expectations',
                         'better than expected', 'strong data', 'surge', 'rally',
                         'positive surprise', 'upward revision', 'robust growth',
-                        'exceeded estimates', 'outperformed', 'stronger than anticipated'
+                        'exceeded estimates', 'outperformed', 'stronger than anticipated',
+                        'optimistic', 'confident', 'bullish', 'recovery', 'expansion',
+                        'increases', 'gains', 'jumps', 'soars', 'climbs', 'rises',
+                        'improvement', 'boost', 'stimulus', 'support', 'strengthen',
+                        'dovish fed', 'rate cut', 'monetary easing', 'liquidity injection',
+                        'positive gdp', 'job growth', 'wage increase', 'spending increase'
                     ],
                     'bearish': [
                         'misses forecast', 'below expectations', 'worse than expected',
@@ -452,7 +465,10 @@ class NewsAnalyzer:
                         'drops', 'falls', 'weakens', 'deteriorates', 'plunges',
                         'slides', 'retreats', 'bearish', 'pessimistic', 'concerned',
                         'slowing growth', 'poor performance', 'weak momentum',
-                        'recession fears', 'economic slowdown', 'inflation concerns'
+                        'recession fears', 'economic slowdown', 'inflation concerns',
+                        'decreases', 'losses', 'tumbles', 'crashes', 'collapses',
+                        'hawkish fed', 'rate hike', 'monetary tightening', 'tapering',
+                        'negative gdp', 'job losses', 'wage decline', 'spending cuts'
                     ]
                 }
 
@@ -483,12 +499,41 @@ class NewsAnalyzer:
 
                     print(f"   📝 Qualitative analysis: {signal_direction} ({bullish_count}B/{bearish_count}B patterns)")
 
+            # Cryptocurrency-specific fundamental analysis
+            if not signal_direction and ('btc' in currency_pair.lower() or 'eth' in currency_pair.lower()):
+                crypto_bullish_terms = [
+                    'institutional adoption', 'etf approval', 'mainstream adoption',
+                    'regulatory clarity', 'bitcoin reserve', 'corporate treasury',
+                    'payment integration', 'network upgrade', 'deflationary pressure',
+                    'supply shock', 'halving effect', 'lightning network', 'defi growth'
+                ]
+                
+                crypto_bearish_terms = [
+                    'regulatory crackdown', 'ban', 'restriction', 'exchange hack',
+                    'security breach', 'fork uncertainty', 'energy concerns',
+                    'environmental issues', 'market manipulation', 'whale selling',
+                    'china ban', 'government seizure', 'exchange closure'
+                ]
+                
+                crypto_bullish_count = sum(1 for term in crypto_bullish_terms if term in full_text)
+                crypto_bearish_count = sum(1 for term in crypto_bearish_terms if term in full_text)
+                
+                if crypto_bullish_count > crypto_bearish_count and crypto_bullish_count > 0:
+                    signal_direction = 'bullish'
+                    signal_strength = 3.0 + crypto_bullish_count
+                    signal_reason = f"Crypto-specific bullish factors ({crypto_bullish_count} detected)"
+                elif crypto_bearish_count > crypto_bullish_count and crypto_bearish_count > 0:
+                    signal_direction = 'bearish'
+                    signal_strength = 3.0 + crypto_bearish_count
+                    signal_reason = f"Crypto-specific bearish factors ({crypto_bearish_count} detected)"
+
             # Enhanced economic indicator analysis
             if signal_direction:
                 # Boost strength for high-impact indicators
                 high_impact_indicators = [
                     'interest rate', 'gdp', 'inflation', 'cpi', 'pce', 'nonfarm payrolls',
-                    'employment', 'unemployment', 'fomc', 'ecb decision', 'boe decision'
+                    'employment', 'unemployment', 'fomc', 'ecb decision', 'boe decision',
+                    'federal reserve', 'central bank', 'monetary policy', 'quantitative easing'
                 ]
 
                 for indicator in high_impact_indicators:
@@ -545,8 +590,8 @@ class NewsAnalyzer:
                     if time_diff.total_seconds() < 3600:  # Less than 1 hour old
                         final_strength *= 1.2
 
-                    # ADDITIONAL VALIDATION for fundamental signals
-                    if final_strength >= 3:  # Only keep signals with meaningful strength
+                    # ADDITIONAL VALIDATION for fundamental signals (lowered threshold)
+                    if final_strength >= 2:  # Lowered from 3 to 2 for better signal capture
                         fundamental_signals.append({
                             'direction': final_direction,
                             'strength': final_strength,
@@ -558,6 +603,28 @@ class NewsAnalyzer:
                             'time': news['time'],
                             'validated': True  # Mark as validated
                         })
+                        
+            # Add general market sentiment signals when specific patterns aren't found
+            elif news['impact'] == 'High' and not signal_direction:
+                # Create a general sentiment signal for high-impact news
+                general_sentiment = 'bullish' if 'positive' in full_text or 'strong' in full_text or 'growth' in full_text else 'bearish'
+                if 'negative' in full_text or 'weak' in full_text or 'decline' in full_text:
+                    general_sentiment = 'bearish'
+                
+                # Apply basic currency relevance
+                base_currency = currency_pair[:3]
+                if any(keyword in full_text for keyword in self.currency_keywords.get(base_currency, [])):
+                    fundamental_signals.append({
+                        'direction': general_sentiment,
+                        'strength': 2.5,  # Moderate strength for general sentiment
+                        'impact': news['impact'],
+                        'reason': f"{news['source']}: General market sentiment",
+                        'affects_base': True,
+                        'affects_quote': False,
+                        'title': news['title'],
+                        'time': news['time'],
+                        'validated': True
+                    })
 
         # Sort by strength and return top signals
         fundamental_signals.sort(key=lambda x: x['strength'], reverse=True)
