@@ -422,16 +422,19 @@ class NewsAnalyzer:
                     if time_diff.total_seconds() < 3600:  # Less than 1 hour old
                         final_strength *= 1.2
                     
-                    fundamental_signals.append({
-                        'direction': final_direction,
-                        'strength': final_strength,
-                        'impact': news['impact'],
-                        'reason': f"{news['source']}: {signal_reason}",
-                        'affects_base': affects_base,
-                        'affects_quote': affects_quote,
-                        'title': news['title'],
-                        'time': news['time']
-                    })
+                    # ADDITIONAL VALIDATION for fundamental signals
+                    if final_strength >= 3:  # Only keep signals with meaningful strength
+                        fundamental_signals.append({
+                            'direction': final_direction,
+                            'strength': final_strength,
+                            'impact': news['impact'],
+                            'reason': f"{news['source']}: {signal_reason}",
+                            'affects_base': affects_base,
+                            'affects_quote': affects_quote,
+                            'title': news['title'],
+                            'time': news['time'],
+                            'validated': True  # Mark as validated
+                        })
         
         # Sort by strength and return top signals
         fundamental_signals.sort(key=lambda x: x['strength'], reverse=True)

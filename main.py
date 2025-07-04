@@ -1158,90 +1158,180 @@ def generate_market_signal(market_name, symbol):
         else:
             bearish_signals += abs(fundamental_score)
 
-        # Enhanced confidence calculation with fundamental/technical priority weighting
+        # ULTRA-CONSERVATIVE CONFIDENCE CALCULATION - MUCH STRICTER REQUIREMENTS
         total_signals = bullish_signals + bearish_signals
-        min_critical_factors = 2
+        min_critical_factors = 4  # INCREASED from 2 to 4 - much stricter
+        min_total_signals = 25    # NEW: Minimum total signal strength required
 
-        # Alternative data quality bonus
+        # Data quality requirements - STRICTER
         data_quality_bonus = 0
+        data_quality_requirements = 0
+        
         if 'market_sentiment' in data_dict:
-            data_quality_bonus += 4  # Market sentiment analysis
+            data_quality_bonus += 3
+            data_quality_requirements += 1
         if 'economic_data' in data_dict:
-            data_quality_bonus += 5  # Economic indicators
+            data_quality_bonus += 4
+            data_quality_requirements += 1
         if 'forex_rates' in data_dict:
-            data_quality_bonus += 3  # Real-time forex rates
-        if 'metals_data' in data_dict:
-            data_quality_bonus += 3  # Precious metals data
+            data_quality_bonus += 2
+            data_quality_requirements += 1
+        if 'metals_data' in data_dict and market_name == 'XAU/USD':
+            data_quality_bonus += 3
+            data_quality_requirements += 1
 
-        # Fundamental priority bonus
-        priority_bonus = 0
-        if news_priority == 'fundamental':
-            priority_bonus = 8  # Higher confidence for fundamental-driven signals
-            min_critical_factors = 1  # Lower threshold for fundamental signals
-            print(f"📊 Fundamental priority bonus applied: +{priority_bonus}%")
-        else:
-            priority_bonus = 2  # Small bonus for technical priority
-            print(f"⚙️ Technical priority maintained")
-
-        if total_signals == 0 or critical_factors < min_critical_factors:
+        # REQUIRE MINIMUM DATA SOURCES
+        if data_quality_requirements < 2:
+            print(f"❌ Insufficient data sources ({data_quality_requirements}/2 minimum)")
+            confidence = 0
+            direction = "WAIT"
+        elif total_signals < min_total_signals:
+            print(f"❌ Insufficient signal strength ({total_signals}/{min_total_signals} minimum)")
+            confidence = 0
+            direction = "WAIT"
+        elif critical_factors < min_critical_factors:
+            print(f"❌ Insufficient critical factors ({critical_factors}/{min_critical_factors} minimum)")
             confidence = 0
             direction = "WAIT"
         else:
-            if bullish_signals > bearish_signals:
-                base_confidence = (bullish_signals / total_signals) * 100
-                critical_boost = min(15, critical_factors * 5)
-                
-                # Apply fundamental boost if applicable
-                if news_priority == 'fundamental' and fundamental_boost > 0:
-                    fundamental_confidence_boost = min(12, abs(fundamental_boost))
-                else:
-                    fundamental_confidence_boost = 0
-                
-                confidence = min(98, int(base_confidence + critical_boost + data_quality_bonus + priority_bonus + fundamental_confidence_boost))
-                
-                # Lower threshold for fundamental-driven signals
-                threshold = 80 if news_priority == 'fundamental' else 85
-                direction = "BUY" if confidence >= threshold else "WAIT"
-                
+            # Calculate confidence with MUCH higher standards
+            signal_dominance = max(bullish_signals, bearish_signals) / total_signals
+            
+            # REQUIRE CLEAR DOMINANCE (75%+ of signals must agree)
+            if signal_dominance < 0.75:
+                print(f"❌ Insufficient signal dominance ({signal_dominance:.2%} < 75% required)")
+                confidence = 0
+                direction = "WAIT"
             else:
-                base_confidence = (bearish_signals / total_signals) * 100
-                critical_boost = min(15, critical_factors * 5)
-                
-                # Apply fundamental boost if applicable
-                if news_priority == 'fundamental' and fundamental_boost < 0:
-                    fundamental_confidence_boost = min(12, abs(fundamental_boost))
-                else:
+                if bullish_signals > bearish_signals:
+                    base_confidence = signal_dominance * 100
+                    critical_boost = min(10, critical_factors * 2)  # REDUCED boost
+                    
+                    # Apply fundamental boost more conservatively
                     fundamental_confidence_boost = 0
-                
-                confidence = min(98, int(base_confidence + critical_boost + data_quality_bonus + priority_bonus + fundamental_confidence_boost))
-                
-                # Lower threshold for fundamental-driven signals
-                threshold = 80 if news_priority == 'fundamental' else 85
-                direction = "SELL" if confidence >= threshold else "WAIT"
+                    if news_priority == 'fundamental' and fundamental_boost > 5:  # HIGHER threshold
+                        fundamental_confidence_boost = min(8, abs(fundamental_boost) * 0.5)  # REDUCED boost
+                    
+                    confidence = min(95, int(base_confidence + critical_boost + data_quality_bonus + fundamental_confidence_boost))
+                    
+                    # MUCH HIGHER THRESHOLDS
+                    if news_priority == 'fundamental':
+                        threshold = 88  # INCREASED from 80
+                        min_fundamental_signals = 3  # NEW: Require multiple fundamental signals
+                        if len([s for s in fundamental_signals if s['strength'] > 5]) < min_fundamental_signals:
+                            print(f"❌ Insufficient strong fundamental signals")
+                            direction = "WAIT"
+                        else:
+                            direction = "BUY" if confidence >= threshold else "WAIT"
+                    else:
+                        threshold = 92  # INCREASED from 85
+                        direction = "BUY" if confidence >= threshold else "WAIT"
+                    
+                else:
+                    base_confidence = signal_dominance * 100
+                    critical_boost = min(10, critical_factors * 2)  # REDUCED boost
+                    
+                    # Apply fundamental boost more conservatively
+                    fundamental_confidence_boost = 0
+                    if news_priority == 'fundamental' and fundamental_boost < -5:  # HIGHER threshold
+                        fundamental_confidence_boost = min(8, abs(fundamental_boost) * 0.5)  # REDUCED boost
+                    
+                    confidence = min(95, int(base_confidence + critical_boost + data_quality_bonus + fundamental_confidence_boost))
+                    
+                    # MUCH HIGHER THRESHOLDS
+                    if news_priority == 'fundamental':
+                        threshold = 88  # INCREASED from 80
+                        min_fundamental_signals = 3  # NEW: Require multiple fundamental signals
+                        if len([s for s in fundamental_signals if s['strength'] > 5]) < min_fundamental_signals:
+                            print(f"❌ Insufficient strong fundamental signals")
+                            direction = "WAIT"
+                        else:
+                            direction = "SELL" if confidence >= threshold else "WAIT"
+                    else:
+                        threshold = 92  # INCREASED from 85
+                        direction = "SELL" if confidence >= threshold else "WAIT"
 
-        # Enhanced stop loss and take profit calculation
+        # ADDITIONAL SAFETY CHECKS
+        if direction != "WAIT":
+            # Check for conflicting signals
+            signal_conflict_ratio = min(bullish_signals, bearish_signals) / max(bullish_signals, bearish_signals)
+            if signal_conflict_ratio > 0.4:  # More than 40% conflicting signals
+                print(f"❌ Too many conflicting signals ({signal_conflict_ratio:.2%})")
+                direction = "WAIT"
+                confidence = 0
+            
+            # Require high volume for crypto/volatile assets
+            if market_name in ['BTC/USD', 'ETH/USD'] and volume_strength < 2:
+                print(f"❌ Insufficient volume for volatile asset {market_name}")
+                direction = "WAIT"
+                confidence = 0
+
+        # ENHANCED RISK MANAGEMENT - MUCH TIGHTER STOPS
         atr = latest.get('ATR', (latest.get('High', price) - latest.get('Low', price)))
         if pd.isna(atr) or atr == 0:
-            atr = price * 0.02  # 2% fallback
+            atr = price * 0.015  # REDUCED from 2% to 1.5%
 
-        # Market-specific risk adjustment
+        # CONSERVATIVE risk adjustment with tighter stops
         risk_adjustment = 1.0
+        max_risk_percent = 0.015  # Maximum 1.5% risk per trade
+        
         if market_name in ['BTC/USD', 'ETH/USD']:
-            risk_adjustment = 1.3  # Higher volatility for crypto
+            risk_adjustment = 1.2  # REDUCED from 1.3
+            max_risk_percent = 0.02  # 2% max risk for crypto
         elif market_name == 'XAU/USD':
-            risk_adjustment = 1.1  # Moderate volatility for gold
+            risk_adjustment = 1.0  # REDUCED from 1.1
+            max_risk_percent = 0.012  # 1.2% max risk for gold
         elif 'JPY' in market_name:
-            risk_adjustment = 0.9  # Lower volatility for JPY pairs
+            risk_adjustment = 0.8  # REDUCED from 0.9
+            max_risk_percent = 0.01  # 1% max risk for JPY pairs
 
+        # Calculate support/resistance based stops
+        support_level = latest.get('SupportLevel', price * 0.99)
+        resistance_level = latest.get('ResistanceLevel', price * 1.01)
+        
         if direction == "BUY":
-            stop_loss = price - (atr * 1.8 * risk_adjustment)
-            take_profit = price + (atr * 3.2 * risk_adjustment)
+            # Use tighter of ATR-based or support-based stop
+            atr_stop = price - (atr * 1.5 * risk_adjustment)  # REDUCED from 1.8 to 1.5
+            support_stop = support_level * 0.999  # Just below support
+            max_risk_stop = price * (1 - max_risk_percent)
+            
+            stop_loss = max(atr_stop, support_stop, max_risk_stop)  # Use tightest stop
+            
+            # Conservative take profit - REDUCED ratio
+            take_profit = price + (atr * 2.5 * risk_adjustment)  # REDUCED from 3.2 to 2.5
+            
+            # Ensure minimum 1:1.5 risk reward ratio
+            risk_amount = price - stop_loss
+            min_profit = risk_amount * 1.5
+            take_profit = max(take_profit, price + min_profit)
+            
         elif direction == "SELL":
-            stop_loss = price + (atr * 1.8 * risk_adjustment)
-            take_profit = price - (atr * 3.2 * risk_adjustment)
+            # Use tighter of ATR-based or resistance-based stop
+            atr_stop = price + (atr * 1.5 * risk_adjustment)  # REDUCED from 1.8 to 1.5
+            resistance_stop = resistance_level * 1.001  # Just above resistance
+            max_risk_stop = price * (1 + max_risk_percent)
+            
+            stop_loss = min(atr_stop, resistance_stop, max_risk_stop)  # Use tightest stop
+            
+            # Conservative take profit - REDUCED ratio
+            take_profit = price - (atr * 2.5 * risk_adjustment)  # REDUCED from 3.2 to 2.5
+            
+            # Ensure minimum 1:1.5 risk reward ratio
+            risk_amount = stop_loss - price
+            min_profit = risk_amount * 1.5
+            take_profit = min(take_profit, price - min_profit)
+            
         else:
             stop_loss = price
             take_profit = price
+
+        # ADDITIONAL RISK VALIDATION
+        if direction != "WAIT":
+            risk_percent = abs(price - stop_loss) / price
+            if risk_percent > max_risk_percent * 1.2:  # Allow 20% tolerance
+                print(f"❌ Risk too high: {risk_percent:.2%} > {max_risk_percent:.2%}")
+                direction = "WAIT"
+                confidence = 0
 
         signal_data = {
             "market": market_name,
@@ -1309,18 +1399,25 @@ def broadcast_signal(signal):
     priority_emoji = "📊" if signal.get('priority') == 'fundamental' else "⚙️"
     priority_text = signal.get('priority', 'technical').upper()
     
-    msg = (f"🎯 *ULTRA-PRECISION SIGNAL* 🎯\n"
+    risk_percent = abs(signal['entry'] - signal['stop_loss']) / signal['entry'] * 100
+    
+    msg = (f"🎯 *ULTRA-SAFE PRECISION SIGNAL* 🎯\n"
            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
            f"📈 Market: *{signal['market']}*\n"
            f"🔥 Direction: *{signal['direction']}*\n"
            f"💰 Entry: *{signal['entry']}*\n"
-           f"🛡️ Stop Loss: *{signal['stop_loss']}*\n"
+           f"🛡️ Stop Loss: *{signal['stop_loss']}* (-{risk_percent:.2f}%)\n"
            f"🎯 Take Profit: *{signal['take_profit']}*\n"
-           f"📊 Confidence: *{signal['confidence']}%*\n"
-           f"⚖️ Risk:Reward: *1:{risk_reward:.2f}*\n"
+           f"📊 Confidence: *{signal['confidence']}%* (90%+ Required)\n"
+           f"⚖️ Risk:Reward: *1:{risk_reward:.2f}* (Min 1:1.5)\n"
            f"{priority_emoji} Priority: *{priority_text}*\n"
-           f"🔬 Technical Score: *{signal['technical_score']}*\n"
-           f"📰 Fundamental Score: *{signal['fundamental_score']}*\n\n"
+           f"🔬 Technical Score: *{signal['technical_score']}* (25+ Required)\n"
+           f"📰 Fundamental Score: *{signal['fundamental_score']}*\n"
+           f"🔒 Critical Factors: *{signal.get('critical_factors', 0)}* (4+ Required)\n\n"
+           f"⚠️ *ULTRA-CONSERVATIVE SETTINGS ACTIVE*\n"
+           f"• Maximum {risk_percent:.1f}% risk per trade\n"
+           f"• Multiple data source validation\n"
+           f"• Enhanced fundamental analysis\n\n"
            f"📋 *Key Factors:*\n• " + "\n• ".join(signal['reasons'][:6]))
 
     successful_sends = 0
@@ -1344,12 +1441,19 @@ def job():
         for market_name, symbol in MARKETS.items():
             signal = generate_market_signal(market_name, symbol)
 
+            # ULTRA-STRICT SIGNAL REQUIREMENTS
             if (signal and signal['direction'] != "WAIT" and 
-                signal['confidence'] >= 85 and 
-                signal.get('critical_factors', 0) >= 2):
+                signal['confidence'] >= 90 and  # INCREASED from 85 to 90
+                signal.get('critical_factors', 0) >= 4 and  # INCREASED from 2 to 4
+                signal.get('bullish_points', 0) + signal.get('bearish_points', 0) >= 25):  # NEW: Minimum total signals
 
-                high_confidence_signals.append(signal)
-                print(f"🎯 HIGH-CONFIDENCE SIGNAL: {market_name} | {signal['direction']} | {signal['confidence']}%")
+                # ADDITIONAL VALIDATION CHECKS
+                risk_reward = abs(signal['take_profit'] - signal['entry']) / abs(signal['entry'] - signal['stop_loss'])
+                if risk_reward >= 1.5:  # Minimum 1:1.5 risk-reward ratio
+                    high_confidence_signals.append(signal)
+                    print(f"🎯 ULTRA-HIGH-CONFIDENCE SIGNAL: {market_name} | {signal['direction']} | {signal['confidence']}% | RR: 1:{risk_reward:.2f}")
+                else:
+                    print(f"⚠️ Signal rejected for poor risk-reward: {market_name} | RR: 1:{risk_reward:.2f}")
 
         # Send signals
         for signal in high_confidence_signals:
@@ -1372,13 +1476,19 @@ def main():
     schedule.every().hour.at(":00").do(job)
     schedule.every(30).seconds.do(handle_telegram_commands)
 
-    print("🚀 Ultra-Precision Trading Bot v8.0 is running...")
+    print("🚀 Ultra-Safe Trading Bot v9.0 - MAXIMUM ACCURACY MODE 🚀")
     print("📊 Markets: Gold + 8 Forex pairs + 2 Crypto")
-    print("🔥 Enhanced with Multiple Data Sources")
+    print("🔥 Enhanced with Multiple Data Sources + STRICT VALIDATION")
     print("📈 Yahoo Finance + CoinGecko + Economic Data + Forex APIs")
     print("💎 Real-time rates + Sentiment + Market structure")
     print("🕯️ Price Action + Technical + Fundamental Analysis")
-    print("🎯 85%+ confidence + 2+ critical factors required")
+    print("🎯 90%+ confidence + 4+ critical factors + 25+ total signals required")
+    print("🛡️ ULTRA-CONSERVATIVE RISK MANAGEMENT:")
+    print("   • Maximum 1.5% risk per trade")
+    print("   • Minimum 1:1.5 risk-reward ratio")
+    print("   • Support/Resistance based stops")
+    print("   • Multiple data source validation required")
+    print("   • 75%+ signal dominance required")
     print("⏰ Analyzing all markets every hour...")
     print("🤖 Telegram bot active - /start to subscribe")
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
