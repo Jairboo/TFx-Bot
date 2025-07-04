@@ -1,0 +1,456 @@
+🚀 Ultra-Safe Trading Bot v10.0 - ADAPTIVE ANALYSIS MODE 🚀
+📊 Markets: Gold + 8 Forex pairs + 2 Crypto
+🔥 Enhanced with Adaptive Priority + Fallback Mechanism
+📈 Yahoo Finance + CoinGecko + Economic Data + Forex APIs
+💎 Real-time rates + Sentiment + Market structure
+🕯️ Price Action + Technical + Fundamental Analysis
+🎯 ADAPTIVE REQUIREMENTS:
+   • Fundamental: 88%+ confidence, 4+ critical factors, 25+ signals
+   • Technical: 85%+ confidence, 3+ critical factors, 20+ signals
+🔄 INTELLIGENT FALLBACK:
+   • Weak fundamentals → Switch to technical analysis
+   • Enhanced technical validation for clean setups
+🛡️ ULTRA-CONSERVATIVE RISK MANAGEMENT:
+   • Maximum 1.5% risk per trade
+   • Minimum 1:1.5 risk-reward ratio
+   • Support/Resistance based stops
+   • 70-75% signal dominance required
+⏰ Analyzing all markets every hour...
+🤖 Telegram bot active - /start to subscribe
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 Starting multi-market analysis...
+📊 Analyzing XAU/USD...
+🔍 Fetching comprehensive data for XAU/USD...
+✅ Yahoo Finance data for XAU/USD (1h)
+✅ Yahoo Finance data for XAU/USD (4h)
+✅ Yahoo Finance data for XAU/USD (1d)
+✅ Processed 1h data for XAU/USD
+✅ Processed 4h data for XAU/USD
+✅ Processed 1d data for XAU/USD
+🥇 Enhanced gold news analysis...
+📰 Fetching FXStreet currency news...
+✅ Found 26 unique FXStreet articles
+📰 Fetching Forex Factory news...
+⚠️ No Forex Factory events found with enhanced scraping
+✅ Enhanced gold news analysis complete
+   Gold sentiment: bullish (10)
+   Priority: TECHNICAL
+📰 News Analysis for XAU/USD:
+   Priority: TECHNICAL
+   Sentiment: bullish (10)
+   High Impact News: 0
+   Fundamental Signals: 0
+⚙️ TECHNICAL PRIORITY for XAU/USD
+❌ Insufficient critical factors (1/3 minimum for technical)
+📊 Analyzing EUR/USD...
+🔍 Fetching comprehensive data for EUR/USD...
+✅ Yahoo Finance data for EUR/USD (1h)
+✅ Yahoo Finance data for EUR/USD (4h)
+✅ Yahoo Finance data for EUR/USD (1d)
+✅ Processed 1h data for EUR/USD
+✅ Processed 4h data for EUR/USD
+✅ Processed 1d data for EUR/USD
+📊 Enhanced news analysis for EUR/USD...
+🔍 Fetching from FXStreet...
+📰 Fetching FXStreet currency news...
+✅ Found 26 unique FXStreet articles
+✅ FXStreet: 26 articles
+🔍 Fetching from FXStreet Calendar...
+📅 Fetching FXStreet economic calendar...
+✅ Found 10 unique economic events
+✅ FXStreet Calendar: 10 articles
+🔍 Fetching from Forex Factory...
+📰 Fetching Forex Factory news...
+⚠️ No Forex Factory events found with enhanced scraping
+⚠️ Forex Factory: No articles found
+🔍 Processing 36 total news items...
+✅ Filtered to 14 relevant news items
+   📝 Qualitative analysis: bullish (1B/0B patterns)
+   📝 Qualitative analysis: bullish (1B/0B patterns)
+✅ Enhanced news analysis complete for EUR/USD
+   📊 Data Quality: HIGH
+   🎯 Sentiment: NEUTRAL (-0.36)
+   ⚖️ Priority: FUNDAMENTAL
+   🔥 High Impact News: 11
+   📈 Fundamental Signals: 5
+   📰 Total Relevant Articles: 14
+📰 News Analysis for EUR/USD:
+   Priority: FUNDAMENTAL
+   Sentiment: neutral (-0.36)
+   High Impact News: 11
+   Fundamental Signals: 5
+🎯 FUNDAMENTAL PRIORITY ACTIVATED for EUR/USD
+❌ Insufficient signal dominance (71.43% < 75% required for fundamental)
+📊 Analyzing USD/JPY...
+🔍 Fetching comprehensive data for USD/JPY...
+✅ Yahoo Finance data for USD/JPY (1h)
+✅ Yahoo Finance data for USD/JPY (4h)
+✅ Yahoo Finance data for USD/JPY (1d)
+✅ Processed 1h data for USD/JPY
+✅ Processed 4h data for USD/JPY
+✅ Processed 1d data for USD/JPY
+📊 Enhanced news analysis for USD/JPY...
+🔍 Fetching from FXStreet...
+📰 Fetching FXStreet currency news...
+✅ Found 26 unique FXStreet articles
+✅ FXStreet: 26 articles
+🔍 Fetching from FXStreet Calendar...
+📅 Fetching FXStreet economic calendar...
+✅ Found 10 unique economic events
+✅ FXStreet Calendar: 10 articles
+🔍 Fetching from Forex Factory...
+📰 Fetching Forex Factory news...
+⚠️ No Forex Factory events found with enhanced scraping
+⚠️ Forex Factory: No articles found
+🔍 Processing 36 total news items...
+✅ Filtered to 13 relevant news items
+   📝 Qualitative analysis: bullish (1B/0B patterns)
+✅ Enhanced news analysis complete for USD/JPY
+   📊 Data Quality: HIGH
+   🎯 Sentiment: BEARISH (-4.57)
+   ⚖️ Priority: FUNDAMENTAL
+   🔥 High Impact News: 11
+   📈 Fundamental Signals: 10
+   📰 Total Relevant Articles: 13
+📰 News Analysis for USD/JPY:
+   Priority: FUNDAMENTAL
+   Sentiment: bearish (-4.57)
+   High Impact News: 11
+   Fundamental Signals: 10
+🎯 FUNDAMENTAL PRIORITY ACTIVATED for USD/JPY
+🔄 FUNDAMENTAL FALLBACK ACTIVATED - Switching to technical priority
+   Reason: Strong signals: 1, Boost: -67, Total signals: 10
+✅ TECHNICAL FALLBACK SUCCESS: USD/JPY | SELL | 95% confidence
+🎯 TECHNICAL SIGNAL: USD/JPY | SELL | 96% | RR: 1:1.67
+📊 Analyzing GBP/USD...
+🔍 Fetching comprehensive data for GBP/USD...
+✅ Yahoo Finance data for GBP/USD (1h)
+✅ Yahoo Finance data for GBP/USD (4h)
+✅ Yahoo Finance data for GBP/USD (1d)
+✅ Processed 1h data for GBP/USD
+✅ Processed 4h data for GBP/USD
+✅ Processed 1d data for GBP/USD
+📊 Enhanced news analysis for GBP/USD...
+🔍 Fetching from FXStreet...
+📰 Fetching FXStreet currency news...
+✅ Found 26 unique FXStreet articles
+✅ FXStreet: 26 articles
+🔍 Fetching from FXStreet Calendar...
+📅 Fetching FXStreet economic calendar...
+✅ Found 10 unique economic events
+✅ FXStreet Calendar: 10 articles
+🔍 Fetching from Forex Factory...
+📰 Fetching Forex Factory news...
+⚠️ No Forex Factory events found with enhanced scraping
+⚠️ Forex Factory: No articles found
+🔍 Processing 36 total news items...
+✅ Filtered to 13 relevant news items
+   📝 Qualitative analysis: bullish (1B/0B patterns)
+✅ Enhanced news analysis complete for GBP/USD
+   📊 Data Quality: HIGH
+   🎯 Sentiment: BULLISH (9.86)
+   ⚖️ Priority: FUNDAMENTAL
+   🔥 High Impact News: 11
+   📈 Fundamental Signals: 2
+   📰 Total Relevant Articles: 13
+📰 News Analysis for GBP/USD:
+   Priority: FUNDAMENTAL
+   Sentiment: bullish (9.86)
+   High Impact News: 11
+   Fundamental Signals: 2
+🎯 FUNDAMENTAL PRIORITY ACTIVATED for GBP/USD
+🔄 FUNDAMENTAL FALLBACK ACTIVATED - Switching to technical priority
+   Reason: Strong signals: 1, Boost: -3, Total signals: 2
+✅ TECHNICAL FALLBACK SUCCESS: GBP/USD | BUY | 95% confidence
+🎯 TECHNICAL SIGNAL: GBP/USD | BUY | 96% | RR: 1:1.67
+📊 Analyzing USD/CHF...
+🔍 Fetching comprehensive data for USD/CHF...
+✅ Yahoo Finance data for USD/CHF (1h)
+✅ Yahoo Finance data for USD/CHF (4h)
+✅ Yahoo Finance data for USD/CHF (1d)
+✅ Processed 1h data for USD/CHF
+✅ Processed 4h data for USD/CHF
+✅ Processed 1d data for USD/CHF
+📊 Enhanced news analysis for USD/CHF...
+🔍 Fetching from FXStreet...
+📰 Fetching FXStreet currency news...
+✅ Found 26 unique FXStreet articles
+✅ FXStreet: 26 articles
+🔍 Fetching from FXStreet Calendar...
+📅 Fetching FXStreet economic calendar...
+✅ Found 10 unique economic events
+✅ FXStreet Calendar: 10 articles
+🔍 Fetching from Forex Factory...
+📰 Fetching Forex Factory news...
+⚠️ No Forex Factory events found with enhanced scraping
+⚠️ Forex Factory: No articles found
+🔍 Processing 36 total news items...
+✅ Filtered to 13 relevant news items
+   📝 Qualitative analysis: bullish (1B/0B patterns)
+✅ Enhanced news analysis complete for USD/CHF
+   📊 Data Quality: HIGH
+   🎯 Sentiment: BEARISH (-4.57)
+   ⚖️ Priority: FUNDAMENTAL
+   🔥 High Impact News: 11
+   📈 Fundamental Signals: 10
+   📰 Total Relevant Articles: 13
+📰 News Analysis for USD/CHF:
+   Priority: FUNDAMENTAL
+   Sentiment: bearish (-4.57)
+   High Impact News: 11
+   Fundamental Signals: 10
+🎯 FUNDAMENTAL PRIORITY ACTIVATED for USD/CHF
+🔄 FUNDAMENTAL FALLBACK ACTIVATED - Switching to technical priority
+   Reason: Strong signals: 1, Boost: -67, Total signals: 10
+✅ TECHNICAL FALLBACK SUCCESS: USD/CHF | SELL | 95% confidence
+🎯 TECHNICAL SIGNAL: USD/CHF | SELL | 96% | RR: 1:1.66
+📊 Analyzing AUD/USD...
+🔍 Fetching comprehensive data for AUD/USD...
+✅ Yahoo Finance data for AUD/USD (1h)
+✅ Yahoo Finance data for AUD/USD (4h)
+✅ Yahoo Finance data for AUD/USD (1d)
+✅ Processed 1h data for AUD/USD
+✅ Processed 4h data for AUD/USD
+✅ Processed 1d data for AUD/USD
+📊 Enhanced news analysis for AUD/USD...
+🔍 Fetching from FXStreet...
+📰 Fetching FXStreet currency news...
+✅ Found 26 unique FXStreet articles
+✅ FXStreet: 26 articles
+🔍 Fetching from FXStreet Calendar...
+📅 Fetching FXStreet economic calendar...
+✅ Found 10 unique economic events
+✅ FXStreet Calendar: 10 articles
+🔍 Fetching from Forex Factory...
+📰 Fetching Forex Factory news...
+⚠️ No Forex Factory events found with enhanced scraping
+⚠️ Forex Factory: No articles found
+🔍 Processing 36 total news items...
+✅ Filtered to 13 relevant news items
+   📝 Qualitative analysis: bullish (1B/0B patterns)
+✅ Enhanced news analysis complete for AUD/USD
+   📊 Data Quality: HIGH
+   🎯 Sentiment: NEUTRAL (-1.45)
+   ⚖️ Priority: FUNDAMENTAL
+   🔥 High Impact News: 11
+   📈 Fundamental Signals: 2
+   📰 Total Relevant Articles: 13
+📰 News Analysis for AUD/USD:
+   Priority: FUNDAMENTAL
+   Sentiment: neutral (-1.45)
+   High Impact News: 11
+   Fundamental Signals: 2
+🎯 FUNDAMENTAL PRIORITY ACTIVATED for AUD/USD
+🔄 FUNDAMENTAL FALLBACK ACTIVATED - Switching to technical priority
+   Reason: Strong signals: 1, Boost: -13, Total signals: 2
+❌ Insufficient signal dominance (63.16% < 70% required for technical)
+📊 Analyzing NZD/USD...
+🔍 Fetching comprehensive data for NZD/USD...
+✅ Yahoo Finance data for NZD/USD (1h)
+✅ Yahoo Finance data for NZD/USD (4h)
+✅ Yahoo Finance data for NZD/USD (1d)
+✅ Processed 1h data for NZD/USD
+✅ Processed 4h data for NZD/USD
+✅ Processed 1d data for NZD/USD
+📊 Enhanced news analysis for NZD/USD...
+🔍 Fetching from FXStreet...
+📰 Fetching FXStreet currency news...
+✅ Found 26 unique FXStreet articles
+✅ FXStreet: 26 articles
+🔍 Fetching from FXStreet Calendar...
+📅 Fetching FXStreet economic calendar...
+✅ Found 10 unique economic events
+✅ FXStreet Calendar: 10 articles
+🔍 Fetching from Forex Factory...
+📰 Fetching Forex Factory news...
+⚠️ No Forex Factory events found with enhanced scraping
+⚠️ Forex Factory: No articles found
+🔍 Processing 36 total news items...
+✅ Filtered to 13 relevant news items
+   📝 Qualitative analysis: bullish (1B/0B patterns)
+✅ Enhanced news analysis complete for NZD/USD
+   📊 Data Quality: HIGH
+   🎯 Sentiment: NEUTRAL (-0.2)
+   ⚖️ Priority: FUNDAMENTAL
+   🔥 High Impact News: 11
+   📈 Fundamental Signals: 1
+   📰 Total Relevant Articles: 13
+📰 News Analysis for NZD/USD:
+   Priority: FUNDAMENTAL
+   Sentiment: neutral (-0.2)
+   High Impact News: 11
+   Fundamental Signals: 1
+🎯 FUNDAMENTAL PRIORITY ACTIVATED for NZD/USD
+🔄 FUNDAMENTAL FALLBACK ACTIVATED - Switching to technical priority
+   Reason: Strong signals: 1, Boost: -5, Total signals: 1
+✅ TECHNICAL FALLBACK SUCCESS: NZD/USD | SELL | 95% confidence
+🎯 TECHNICAL SIGNAL: NZD/USD | SELL | 96% | RR: 1:1.66
+📊 Analyzing EUR/CHF...
+🔍 Fetching comprehensive data for EUR/CHF...
+✅ Yahoo Finance data for EUR/CHF (1h)
+✅ Yahoo Finance data for EUR/CHF (4h)
+✅ Yahoo Finance data for EUR/CHF (1d)
+✅ Processed 1h data for EUR/CHF
+✅ Processed 4h data for EUR/CHF
+✅ Processed 1d data for EUR/CHF
+📊 Enhanced news analysis for EUR/CHF...
+🔍 Fetching from FXStreet...
+📰 Fetching FXStreet currency news...
+✅ Found 26 unique FXStreet articles
+✅ FXStreet: 26 articles
+🔍 Fetching from FXStreet Calendar...
+📅 Fetching FXStreet economic calendar...
+✅ Found 10 unique economic events
+✅ FXStreet Calendar: 10 articles
+🔍 Fetching from Forex Factory...
+📰 Fetching Forex Factory news...
+⚠️ No Forex Factory events found with enhanced scraping
+⚠️ Forex Factory: No articles found
+🔍 Processing 36 total news items...
+✅ Filtered to 13 relevant news items
+   📝 Qualitative analysis: bullish (1B/0B patterns)
+✅ Enhanced news analysis complete for EUR/CHF
+   📊 Data Quality: HIGH
+   🎯 Sentiment: NEUTRAL (1.37)
+   ⚖️ Priority: FUNDAMENTAL
+   🔥 High Impact News: 11
+   📈 Fundamental Signals: 4
+   📰 Total Relevant Articles: 13
+📰 News Analysis for EUR/CHF:
+   Priority: FUNDAMENTAL
+   Sentiment: neutral (1.37)
+   High Impact News: 11
+   Fundamental Signals: 4
+🎯 FUNDAMENTAL PRIORITY ACTIVATED for EUR/CHF
+🔄 FUNDAMENTAL FALLBACK ACTIVATED - Switching to technical priority
+   Reason: Strong signals: 1, Boost: -19, Total signals: 4
+✅ TECHNICAL FALLBACK SUCCESS: EUR/CHF | BUY | 95% confidence
+🎯 TECHNICAL SIGNAL: EUR/CHF | BUY | 95% | RR: 1:1.67
+📊 Analyzing EUR/GBP...
+🔍 Fetching comprehensive data for EUR/GBP...
+✅ Yahoo Finance data for EUR/GBP (1h)
+✅ Yahoo Finance data for EUR/GBP (4h)
+✅ Yahoo Finance data for EUR/GBP (1d)
+✅ Processed 1h data for EUR/GBP
+✅ Processed 4h data for EUR/GBP
+✅ Processed 1d data for EUR/GBP
+📊 Enhanced news analysis for EUR/GBP...
+🔍 Fetching from FXStreet...
+📰 Fetching FXStreet currency news...
+✅ Found 26 unique FXStreet articles
+✅ FXStreet: 26 articles
+🔍 Fetching from FXStreet Calendar...
+📅 Fetching FXStreet economic calendar...
+✅ Found 10 unique economic events
+✅ FXStreet Calendar: 10 articles
+🔍 Fetching from Forex Factory...
+📰 Fetching Forex Factory news...
+⚠️ No Forex Factory events found with enhanced scraping
+⚠️ Forex Factory: No articles found
+🔍 Processing 36 total news items...
+✅ Filtered to 14 relevant news items
+   📝 Qualitative analysis: bullish (1B/0B patterns)
+   📝 Qualitative analysis: bullish (1B/0B patterns)
+✅ Enhanced news analysis complete for EUR/GBP
+   📊 Data Quality: HIGH
+   🎯 Sentiment: NEUTRAL (1.72)
+   ⚖️ Priority: FUNDAMENTAL
+   🔥 High Impact News: 11
+   📈 Fundamental Signals: 5
+   📰 Total Relevant Articles: 14
+📰 News Analysis for EUR/GBP:
+   Priority: FUNDAMENTAL
+   Sentiment: neutral (1.72)
+   High Impact News: 11
+   Fundamental Signals: 5
+🎯 FUNDAMENTAL PRIORITY ACTIVATED for EUR/GBP
+❌ Insufficient data sources (1/2 minimum for fundamental)
+📊 Analyzing BTC/USD...
+🔍 Fetching comprehensive data for BTC/USD...
+✅ Yahoo Finance data for BTC/USD (1h)
+✅ Yahoo Finance data for BTC/USD (4h)
+✅ Yahoo Finance data for BTC/USD (1d)
+✅ Processed 1h data for BTC/USD
+✅ Processed 4h data for BTC/USD
+✅ Processed 1d data for BTC/USD
+📊 Enhanced news analysis for BTC/USD...
+🔍 Fetching from FXStreet...
+📰 Fetching FXStreet currency news...
+✅ Found 26 unique FXStreet articles
+✅ FXStreet: 26 articles
+🔍 Fetching from FXStreet Calendar...
+📅 Fetching FXStreet economic calendar...
+✅ Found 10 unique economic events
+✅ FXStreet Calendar: 10 articles
+🔍 Fetching from Forex Factory...
+📰 Fetching Forex Factory news...
+⚠️ No Forex Factory events found with enhanced scraping
+⚠️ Forex Factory: No articles found
+🔍 Processing 36 total news items...
+✅ Filtered to 13 relevant news items
+   📝 Qualitative analysis: bullish (1B/0B patterns)
+✅ Enhanced news analysis complete for BTC/USD
+   📊 Data Quality: HIGH
+   🎯 Sentiment: NEUTRAL (-0.2)
+   ⚖️ Priority: FUNDAMENTAL
+   🔥 High Impact News: 11
+   📈 Fundamental Signals: 1
+   📰 Total Relevant Articles: 13
+📰 News Analysis for BTC/USD:
+   Priority: FUNDAMENTAL
+   Sentiment: neutral (-0.2)
+   High Impact News: 11
+   Fundamental Signals: 1
+🎯 FUNDAMENTAL PRIORITY ACTIVATED for BTC/USD
+🔄 FUNDAMENTAL FALLBACK ACTIVATED - Switching to technical priority
+   Reason: Strong signals: 1, Boost: -5, Total signals: 1
+❌ Insufficient signal dominance (60.87% < 70% required for technical)
+📊 Analyzing ETH/USD...
+🔍 Fetching comprehensive data for ETH/USD...
+✅ Yahoo Finance data for ETH/USD (1h)
+✅ Yahoo Finance data for ETH/USD (4h)
+✅ Yahoo Finance data for ETH/USD (1d)
+✅ Processed 1h data for ETH/USD
+✅ Processed 4h data for ETH/USD
+✅ Processed 1d data for ETH/USD
+📊 Enhanced news analysis for ETH/USD...
+🔍 Fetching from FXStreet...
+📰 Fetching FXStreet currency news...
+✅ Found 26 unique FXStreet articles
+✅ FXStreet: 26 articles
+🔍 Fetching from FXStreet Calendar...
+📅 Fetching FXStreet economic calendar...
+✅ Found 10 unique economic events
+✅ FXStreet Calendar: 10 articles
+🔍 Fetching from Forex Factory...
+📰 Fetching Forex Factory news...
+⚠️ No Forex Factory events found with enhanced scraping
+⚠️ Forex Factory: No articles found
+🔍 Processing 36 total news items...
+✅ Filtered to 13 relevant news items
+   📝 Qualitative analysis: bullish (1B/0B patterns)
+✅ Enhanced news analysis complete for ETH/USD
+   📊 Data Quality: HIGH
+   🎯 Sentiment: NEUTRAL (-0.2)
+   ⚖️ Priority: FUNDAMENTAL
+   🔥 High Impact News: 11
+   📈 Fundamental Signals: 1
+   📰 Total Relevant Articles: 13
+📰 News Analysis for ETH/USD:
+   Priority: FUNDAMENTAL
+   Sentiment: neutral (-0.2)
+   High Impact News: 11
+   Fundamental Signals: 1
+🎯 FUNDAMENTAL PRIORITY ACTIVATED for ETH/USD
+🔄 FUNDAMENTAL FALLBACK ACTIVATED - Switching to technical priority
+   Reason: Strong signals: 1, Boost: -5, Total signals: 1
+✅ TECHNICAL FALLBACK SUCCESS: ETH/USD | SELL | 93% confidence
+🎯 TECHNICAL SIGNAL: ETH/USD | SELL | 93% | RR: 1:1.67
+📤 Signal sent to 1 subscribers
+📤 Signal sent to 1 subscribers
+📤 Signal sent to 1 subscribers
+📤 Signal sent to 1 subscribers
+📤 Signal sent to 1 subscribers
+📤 Signal sent to 1 subscribers
+📊 Analysis complete. 6 signals generated
