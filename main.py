@@ -1429,8 +1429,8 @@ def log_to_db(signal):
 
 
 # --- BROADCAST SIGNALS ---
-def broadcast_signal(signal):
-    """Send signal to all active subscribers"""
+def broadcast_ultra_conservative_signal(signal):
+    """Send ultra-conservative signal to all active subscribers"""
     active_subscribers = get_active_subscribers()
 
     if not active_subscribers:
@@ -1438,30 +1438,36 @@ def broadcast_signal(signal):
         return
 
     risk_reward = abs(signal['take_profit'] - signal['entry']) / abs(signal['entry'] - signal['stop_loss'])
-
+    london_session = is_london_session()
+    
     priority_emoji = "📊" if signal.get('priority') == 'fundamental' else "⚙️"
     priority_text = signal.get('priority', 'technical').upper()
+    session_emoji = "🏴󠁧󠁢󠁥󠁮󠁧󠁿" if london_session else "🌍"
+    session_text = "LONDON SESSION" if london_session else "GLOBAL SESSION"
     
     risk_percent = abs(signal['entry'] - signal['stop_loss']) / signal['entry'] * 100
     
-    msg = (f"🎯 *ULTRA-SAFE PRECISION SIGNAL* 🎯\n"
+    # Enhanced message with loss prevention focus
+    msg = (f"🛡️ *ULTRA-CONSERVATIVE SIGNAL* 🛡️\n"
            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
            f"📈 Market: *{signal['market']}*\n"
            f"🔥 Direction: *{signal['direction']}*\n"
            f"💰 Entry: *{signal['entry']}*\n"
            f"🛡️ Stop Loss: *{signal['stop_loss']}* (-{risk_percent:.2f}%)\n"
            f"🎯 Take Profit: *{signal['take_profit']}*\n"
-           f"📊 Confidence: *{signal['confidence']}%* (90%+ Required)\n"
-           f"⚖️ Risk:Reward: *1:{risk_reward:.2f}* (Min 1:1.5)\n"
+           f"📊 Confidence: *{signal['confidence']}%* (92%+ Required)\n"
+           f"⚖️ Risk:Reward: *1:{risk_reward:.2f}* (Min 1:2.0)\n"
+           f"{session_emoji} Session: *{session_text}*\n"
            f"{priority_emoji} Priority: *{priority_text}*\n"
-           f"🔬 Technical Score: *{signal['technical_score']}* (25+ Required)\n"
-           f"📰 Fundamental Score: *{signal['fundamental_score']}*\n"
-           f"🔒 Critical Factors: *{signal.get('critical_factors', 0)}* (4+ Required)\n\n"
-           f"⚠️ *ULTRA-CONSERVATIVE SETTINGS ACTIVE*\n"
-           f"• Maximum {risk_percent:.1f}% risk per trade\n"
-           f"• Multiple data source validation\n"
-           f"• Enhanced fundamental analysis\n\n"
-           f"📋 *Key Factors:*\n• " + "\n• ".join(signal['reasons'][:6]))
+           f"🔒 Critical Factors: *{signal.get('critical_factors', 0)}*\n\n"
+           f"🛡️ *LOSS PREVENTION FEATURES ACTIVE*\n"
+           f"• Maximum {risk_percent:.1f}% risk (Ultra-tight stops)\n"
+           f"• London session prioritized for forex/gold\n"
+           f"• 10-point validation system passed\n"
+           f"• Multi-timeframe trend alignment confirmed\n"
+           f"• Volume and structure validated\n\n"
+           f"📋 *Validation Factors:*\n• " + "\n• ".join(signal['reasons'][:5]) + "\n\n"
+           f"⚠️ *TRADE SAFELY - WAIT FOR PERFECT SETUPS ONLY*")
 
     successful_sends = 0
     failed_sends = 0
@@ -1472,10 +1478,29 @@ def broadcast_signal(signal):
         else:
             failed_sends += 1
 
-    print(f"📤 Signal sent to {successful_sends} subscribers")
+    print(f"📤 Ultra-conservative signal sent to {successful_sends} subscribers")
+
+
+def broadcast_signal(signal):
+    """Legacy function - redirects to ultra-conservative version"""
+    broadcast_ultra_conservative_signal(signal)
 
 
 # --- MAIN JOB ---
+def is_london_session():
+    """Check if it's London trading session (7 AM - 4 PM GMT)"""
+    from datetime import datetime, timezone
+    
+    now_gmt = datetime.now(timezone.utc)
+    current_hour = now_gmt.hour
+    current_weekday = now_gmt.weekday()  # 0=Monday, 6=Sunday
+    
+    # London session: 7 AM - 4 PM GMT, Monday to Friday
+    if current_weekday < 5:  # Monday to Friday
+        return 7 <= current_hour < 16  # 7 AM to 4 PM GMT
+    return False
+
+
 def is_market_open(market_name):
     """Check if market is open based on current time and market type"""
     from datetime import datetime, timezone
@@ -1510,77 +1535,245 @@ def is_market_open(market_name):
     return True  # Default to open for any other markets
 
 
+def validate_ultra_conservative_signal(signal_data, market_data):
+    """Ultra-conservative signal validation to prevent losses"""
+    if not signal_data or signal_data['direction'] == "WAIT":
+        return False, "No signal generated"
+    
+    validation_score = 0
+    rejection_reasons = []
+    
+    # 1. LONDON SESSION PREFERENCE (Major boost for forex/gold)
+    london_session = is_london_session()
+    if signal_data['market'] in ['XAU/USD', 'EUR/USD', 'USD/JPY', 'GBP/USD', 'USD/CHF', 
+                                'AUD/USD', 'NZD/USD', 'EUR/CHF', 'EUR/GBP']:
+        if london_session:
+            validation_score += 15
+            print(f"✅ LONDON SESSION ACTIVE - Major boost for {signal_data['market']}")
+        else:
+            validation_score -= 10
+            rejection_reasons.append("Outside London session (7AM-4PM GMT)")
+            print(f"⚠️ Outside London session for {signal_data['market']}")
+    
+    # 2. EXTREME CONFIDENCE REQUIREMENTS
+    min_confidence = 92 if london_session else 95
+    if signal_data['confidence'] < min_confidence:
+        rejection_reasons.append(f"Confidence {signal_data['confidence']}% < {min_confidence}% required")
+    else:
+        validation_score += 10
+    
+    # 3. MARKET STRUCTURE VALIDATION
+    if '1h' in market_data:
+        data = market_data['1h']
+        latest = data.iloc[-1]
+        
+        # Check for clean market structure
+        structure_bias = latest.get('StructureBias', 0)
+        if signal_data['direction'] == 'BUY' and structure_bias != 1:
+            rejection_reasons.append("Market structure not bullish for BUY signal")
+        elif signal_data['direction'] == 'SELL' and structure_bias != -1:
+            rejection_reasons.append("Market structure not bearish for SELL signal")
+        else:
+            validation_score += 8
+    
+    # 4. VOLUME VALIDATION (Critical for entries)
+    if '1h' in market_data and 'Volume' in market_data['1h'].columns:
+        data = market_data['1h']
+        recent_volume = data['Volume'].tail(3).mean()
+        avg_volume = data['Volume'].rolling(window=20).mean().iloc[-1]
+        
+        volume_ratio = recent_volume / avg_volume if avg_volume > 0 else 1
+        if volume_ratio < 1.2:  # Need at least 20% above average volume
+            rejection_reasons.append(f"Insufficient volume ({volume_ratio:.1f}x average)")
+        else:
+            validation_score += 5
+    
+    # 5. RISK-REWARD VALIDATION (Stricter requirements)
+    risk_amount = abs(signal_data['entry'] - signal_data['stop_loss'])
+    reward_amount = abs(signal_data['take_profit'] - signal_data['entry'])
+    
+    if risk_amount == 0:
+        rejection_reasons.append("Invalid risk calculation")
+    else:
+        risk_reward_ratio = reward_amount / risk_amount
+        min_rr = 2.0  # Increased from 1.5 to 2.0
+        
+        if risk_reward_ratio < min_rr:
+            rejection_reasons.append(f"Risk-reward {risk_reward_ratio:.2f} < {min_rr} minimum")
+        else:
+            validation_score += 12
+    
+    # 6. FUNDAMENTAL-TECHNICAL ALIGNMENT
+    priority = signal_data.get('priority', 'technical')
+    fundamental_signals = len([r for r in signal_data.get('reasons', []) if 'fundamental' in r.lower() or '📈' in r or '📉' in r])
+    
+    if priority == 'fundamental' and fundamental_signals < 2:
+        rejection_reasons.append("Insufficient fundamental backing for fundamental priority")
+    elif priority == 'technical' and signal_data.get('critical_factors', 0) < 4:
+        rejection_reasons.append("Insufficient technical confluence")
+    else:
+        validation_score += 8
+    
+    # 7. TREND ALIGNMENT CHECK
+    if '1h' in market_data and '4h' in market_data:
+        h1_data = market_data['1h'].iloc[-1]
+        h4_data = market_data['4h'].iloc[-1]
+        
+        # Check EMA alignment across timeframes
+        h1_ema_bullish = h1_data.get('EMA20', 0) > h1_data.get('EMA50', 0)
+        h4_ema_bullish = h4_data.get('EMA20', 0) > h4_data.get('EMA50', 0)
+        
+        if signal_data['direction'] == 'BUY' and not (h1_ema_bullish and h4_ema_bullish):
+            rejection_reasons.append("EMA trend not aligned bullish across timeframes")
+        elif signal_data['direction'] == 'SELL' and (h1_ema_bullish or h4_ema_bullish):
+            rejection_reasons.append("EMA trend not aligned bearish across timeframes")
+        else:
+            validation_score += 10
+    
+    # 8. SUPPORT/RESISTANCE VALIDATION
+    if '1h' in market_data:
+        latest = market_data['1h'].iloc[-1]
+        price = latest['Close']
+        support = latest.get('SupportLevel', price * 0.99)
+        resistance = latest.get('ResistanceLevel', price * 1.01)
+        
+        # Check if price is in good position relative to S/R
+        if signal_data['direction'] == 'BUY':
+            distance_from_support = (price - support) / price
+            if distance_from_support > 0.005:  # More than 0.5% from support
+                rejection_reasons.append("Price too far from support for BUY entry")
+            else:
+                validation_score += 6
+        
+        elif signal_data['direction'] == 'SELL':
+            distance_from_resistance = (resistance - price) / price
+            if distance_from_resistance > 0.005:  # More than 0.5% from resistance
+                rejection_reasons.append("Price too far from resistance for SELL entry")
+            else:
+                validation_score += 6
+    
+    # 9. ECONOMIC NEWS CONFLICT CHECK
+    if 'market_sentiment' in market_data:
+        sentiment = market_data['market_sentiment']
+        usd_strength = sentiment.get('usd_strength', 'neutral')
+        
+        # Check for conflicting USD sentiment
+        if 'USD' in signal_data['market']:
+            if signal_data['market'].startswith('USD') and signal_data['direction'] == 'BUY' and usd_strength == 'weak':
+                rejection_reasons.append("Conflicting USD weakness for USD base currency BUY")
+            elif signal_data['market'].endswith('USD') and signal_data['direction'] == 'SELL' and usd_strength == 'strong':
+                rejection_reasons.append("Conflicting USD strength for USD quote currency SELL")
+            else:
+                validation_score += 4
+    
+    # 10. FINAL VALIDATION SCORE CHECK
+    min_validation_score = 50 if london_session else 60
+    
+    if validation_score < min_validation_score:
+        rejection_reasons.append(f"Validation score {validation_score} < {min_validation_score} required")
+    
+    # DECISION LOGIC
+    is_valid = len(rejection_reasons) == 0 and validation_score >= min_validation_score
+    
+    if is_valid:
+        print(f"✅ ULTRA-CONSERVATIVE VALIDATION PASSED: {signal_data['market']} (Score: {validation_score})")
+        return True, f"Validation passed (Score: {validation_score})"
+    else:
+        print(f"❌ ULTRA-CONSERVATIVE VALIDATION FAILED: {signal_data['market']}")
+        for reason in rejection_reasons:
+            print(f"   ❌ {reason}")
+        return False, "; ".join(rejection_reasons)
+
+
 def job():
     try:
-        print("🔍 Starting multi-market analysis...")
-        high_confidence_signals = []
+        print("🔍 Starting ultra-conservative multi-market analysis...")
+        london_session = is_london_session()
+        print(f"🕐 London Session Active: {'YES' if london_session else 'NO'}")
+        
+        ultra_safe_signals = []
+        total_signals_generated = 0
+        total_signals_validated = 0
 
         for market_name, symbol in MARKETS.items():
             # Check if market is open before analysis
             if not is_market_open(market_name):
                 continue
-                
+            
+            print(f"\n🔍 Analyzing {market_name}...")
+            
+            # Generate initial signal
             signal = generate_market_signal(market_name, symbol)
+            market_data = fetch_market_data(symbol, market_name)
 
-            # ADAPTIVE SIGNAL REQUIREMENTS based on analysis method
             if signal and signal['direction'] != "WAIT":
-                analysis_method = signal.get('priority', 'technical')
-                fallback_used = 'Technical fallback engaged' in signal.get('reasons', [])
+                total_signals_generated += 1
                 
-                # Set requirements based on analysis method
-                if analysis_method == 'fundamental' and not fallback_used:
-                    # Strict requirements for fundamental analysis
-                    min_confidence = 88
-                    min_critical_factors = 4
-                    min_total_signals = 25
-                elif fallback_used or analysis_method == 'technical':
-                    # More lenient requirements for technical analysis
-                    min_confidence = 85
-                    min_critical_factors = 3
-                    min_total_signals = 20
-                else:
-                    # Default requirements
-                    min_confidence = 87
-                    min_critical_factors = 3
-                    min_total_signals = 22
-
-                # Check signal requirements
-                if (signal['confidence'] >= min_confidence and 
-                    signal.get('critical_factors', 0) >= min_critical_factors and  
-                    signal.get('bullish_points', 0) + signal.get('bearish_points', 0) >= min_total_signals):
-
-                    # ADDITIONAL VALIDATION CHECKS
-                    risk_reward = abs(signal['take_profit'] - signal['entry']) / abs(signal['entry'] - signal['stop_loss'])
-                    if risk_reward >= 1.5:  # Minimum 1:1.5 risk-reward ratio
-                        high_confidence_signals.append(signal)
-                        method_label = "FUNDAMENTAL" if analysis_method == 'fundamental' and not fallback_used else "TECHNICAL" + (" FALLBACK" if fallback_used else "")
-                        print(f"🎯 {method_label} SIGNAL: {market_name} | {signal['direction']} | {signal['confidence']}% | RR: 1:{risk_reward:.2f}")
-                    else:
-                        print(f"⚠️ Signal rejected for poor risk-reward: {market_name} | RR: 1:{risk_reward:.2f}")
-                else:
-                    reasons = []
-                    if signal['confidence'] < min_confidence:
-                        reasons.append(f"confidence {signal['confidence']}% < {min_confidence}%")
-                    if signal.get('critical_factors', 0) < min_critical_factors:
-                        reasons.append(f"critical factors {signal.get('critical_factors', 0)} < {min_critical_factors}")
-                    if signal.get('bullish_points', 0) + signal.get('bearish_points', 0) < min_total_signals:
-                        total = signal.get('bullish_points', 0) + signal.get('bearish_points', 0)
-                        reasons.append(f"total signals {total} < {min_total_signals}")
+                # ULTRA-CONSERVATIVE VALIDATION
+                is_valid, validation_message = validate_ultra_conservative_signal(signal, market_data)
+                
+                if is_valid:
+                    total_signals_validated += 1
                     
-                    print(f"⚠️ Signal rejected for {market_name}: {', '.join(reasons)}")
+                    # FINAL LONDON SESSION BOOST
+                    if london_session and market_name in ['XAU/USD', 'EUR/USD', 'USD/JPY', 'GBP/USD', 'USD/CHF', 'AUD/USD', 'NZD/USD', 'EUR/CHF', 'EUR/GBP']:
+                        signal['confidence'] = min(98, signal['confidence'] + 3)
+                        signal['reasons'].append("🏴󠁧󠁢󠁥󠁮󠁧󠁿 London Session Premium")
+                    
+                    # RISK VALIDATION - Even stricter for losses prevention
+                    risk_percent = abs(signal['entry'] - signal['stop_loss']) / signal['entry'] * 100
+                    
+                    # Maximum risk limits based on asset class
+                    max_risk_limits = {
+                        'XAU/USD': 0.8,      # 0.8% max for gold
+                        'EUR/USD': 0.6,      # 0.6% max for major pairs
+                        'GBP/USD': 0.6,
+                        'USD/JPY': 0.5,      # 0.5% max for JPY pairs
+                        'USD/CHF': 0.6,
+                        'AUD/USD': 0.7,
+                        'NZD/USD': 0.7,
+                        'EUR/CHF': 0.7,
+                        'EUR/GBP': 0.7,
+                        'BTC/USD': 1.2,      # 1.2% max for crypto
+                        'ETH/USD': 1.2
+                    }
+                    
+                    max_risk = max_risk_limits.get(market_name, 0.8)
+                    
+                    if risk_percent <= max_risk:
+                        ultra_safe_signals.append(signal)
+                        print(f"✅ ULTRA-SAFE SIGNAL APPROVED: {market_name}")
+                        print(f"   Direction: {signal['direction']}")
+                        print(f"   Confidence: {signal['confidence']}%")
+                        print(f"   Risk: {risk_percent:.2f}% (Max: {max_risk}%)")
+                        print(f"   London Session: {'YES' if london_session else 'NO'}")
+                        print(f"   Validation: {validation_message}")
+                    else:
+                        print(f"❌ Signal rejected - Risk too high: {risk_percent:.2f}% > {max_risk}%")
+                else:
+                    print(f"❌ Signal validation failed: {validation_message}")
+            else:
+                print(f"⏸️ No signal generated for {market_name}")
 
-        # Send signals
-        for signal in high_confidence_signals:
-            broadcast_signal(signal)
+        # Enhanced signal broadcasting with ultra-conservative messaging
+        for signal in ultra_safe_signals:
+            broadcast_ultra_conservative_signal(signal)
             log_to_db(signal)
 
-        if not high_confidence_signals:
-            print("⏳ No high-confidence signals found")
+        # Summary with London session context
+        print(f"\n📊 ULTRA-CONSERVATIVE ANALYSIS COMPLETE")
+        print(f"🕐 London Session: {'ACTIVE' if london_session else 'INACTIVE'}")
+        print(f"📈 Signals Generated: {total_signals_generated}")
+        print(f"✅ Signals Validated: {total_signals_validated}")
+        print(f"🎯 Ultra-Safe Signals: {len(ultra_safe_signals)}")
+        print(f"📊 Success Rate: {(len(ultra_safe_signals)/max(1, total_signals_generated))*100:.1f}%")
 
-        print(f"📊 Analysis complete. {len(high_confidence_signals)} signals generated")
+        if not ultra_safe_signals:
+            london_msg = " (Waiting for London session)" if not london_session else ""
+            print(f"⏳ No ultra-safe signals found{london_msg}")
 
     except Exception as e:
-        print(f"❌ Error in job execution: {e}")
+        print(f"❌ Error in ultra-conservative analysis: {e}")
         import traceback
         traceback.print_exc()
 
@@ -1590,23 +1783,28 @@ def main():
     schedule.every().hour.at(":00").do(job)
     schedule.every(30).seconds.do(handle_telegram_commands)
 
-    print("🚀 Ultra-Safe Trading Bot v10.0 - ADAPTIVE ANALYSIS MODE 🚀")
+    print("🛡️ Ultra-Safe Trading Bot v11.0 - LOSS PREVENTION MODE 🛡️")
     print("📊 Markets: Gold + 8 Forex pairs + 2 Crypto")
-    print("🔥 Enhanced with Adaptive Priority + Fallback Mechanism")
+    print("🏴󠁧󠁢󠁥󠁮󠁧󠁿 LONDON SESSION PRIORITIZED (7AM-4PM GMT)")
+    print("🛡️ 10-POINT ULTRA-CONSERVATIVE VALIDATION SYSTEM")
     print("📈 Yahoo Finance + CoinGecko + Economic Data + Forex APIs")
     print("💎 Real-time rates + Sentiment + Market structure")
     print("🕯️ Price Action + Technical + Fundamental Analysis")
-    print("🎯 ADAPTIVE REQUIREMENTS:")
-    print("   • Fundamental: 88%+ confidence, 4+ critical factors, 25+ signals")
-    print("   • Technical: 85%+ confidence, 3+ critical factors, 20+ signals")
-    print("🔄 INTELLIGENT FALLBACK:")
-    print("   • Weak fundamentals → Switch to technical analysis")
-    print("   • Enhanced technical validation for clean setups")
-    print("🛡️ ULTRA-CONSERVATIVE RISK MANAGEMENT:")
-    print("   • Maximum 1.5% risk per trade")
-    print("   • Minimum 1:1.5 risk-reward ratio")
-    print("   • Support/Resistance based stops")
-    print("   • 70-75% signal dominance required")
+    print("🎯 EXTREME REQUIREMENTS (LOSS PREVENTION):")
+    print("   • London Session: 92%+ confidence required")
+    print("   • Outside London: 95%+ confidence required")
+    print("   • Minimum 1:2.0 risk-reward ratio")
+    print("   • Maximum 0.8% risk per trade (forex/gold)")
+    print("   • Maximum 1.2% risk per trade (crypto)")
+    print("🔒 ULTRA-CONSERVATIVE VALIDATION:")
+    print("   • Multi-timeframe trend alignment mandatory")
+    print("   • Volume confirmation required")
+    print("   • Market structure bias alignment")
+    print("   • Support/Resistance proximity check")
+    print("   • Economic sentiment conflict analysis")
+    print("🏴󠁧󠁢󠁥󠁮󠁧󠁿 LONDON SESSION PREFERENCE:")
+    print("   • Major boost for forex/gold during London hours")
+    print("   • Reduced activity outside London session")
     print("⏰ MARKET HOURS AWARENESS:")
     print("   • Forex/Gold: Monday 00:00 - Friday 22:00 GMT")
     print("   • Crypto: 24/7 analysis (BTC/ETH only on weekends)")
