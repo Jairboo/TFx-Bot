@@ -2,8 +2,8 @@
 import os
 
 # Telegram Bot Configuration
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8018851274:AAHWZEhTpC5GMIdDmnqAUApEVS2bdxlIZUA")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "7104833764")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "******")
 
 # Trading Configuration
 CONFIDENCE_SCALE = 10
