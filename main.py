@@ -63,19 +63,34 @@ Session = sessionmaker(bind=engine)
 last_update_id = 0
 
 
-def get_telegram_updates(offset=None):
-    """Get updates from Telegram bot"""
+def get_telegram_updates(offset=None, max_retries=3):
+    """Get updates from Telegram bot with retry mechanism"""
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates"
     params = {"timeout": 10}
     if offset:
         params["offset"] = offset
 
-    try:
-        response = requests.get(url, params=params, timeout=15)
-        return response.json()
-    except Exception as e:
-        print(f"Error getting Telegram updates: {e}")
-        return None
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, params=params, timeout=60)  # Increased timeout
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"❌ Telegram API error: {response.status_code}")
+                
+        except requests.Timeout:
+            print(f"⚠️ Telegram API timeout (attempt {attempt + 1}/{max_retries})")
+        except requests.RequestException as e:
+            print(f"⚠️ Telegram connection error (attempt {attempt + 1}/{max_retries}): {e}")
+        except Exception as e:
+            print(f"❌ Error getting Telegram updates (attempt {attempt + 1}/{max_retries}): {e}")
+        
+        if attempt < max_retries - 1:
+            sleep_time = (attempt + 1) * 5  # Exponential backoff
+            print(f"🔄 Retrying in {sleep_time} seconds...")
+            time.sleep(sleep_time)
+    
+    return None
 
 
 def send_message(chat_id, text, parse_mode="Markdown"):
@@ -1814,8 +1829,11 @@ def job():
 
 # --- MAIN LOOP ---
 def main():
-    schedule.every().hour.at(":00").do(job)
-    schedule.every(30).seconds.do(handle_telegram_commands)
+    # Schedule market analysis to run every 15 minutes
+    schedule.every(15).minutes.do(job)
+    
+    # Check Telegram commands every minute
+    schedule.every(1).minutes.do(handle_telegram_commands)
 
     print("🛡️ Ultra-Safe Trading Bot v11.0 - LOSS PREVENTION MODE 🛡️")
     print("📊 Markets: Gold + 8 Forex pairs + 2 Crypto")
@@ -1831,33 +1849,78 @@ def main():
     print("   • Multi-timeframe confirmation")
     print("   • Volume validation required")
     print("   • Market structure alignment")
+    print("⏰ Analysis Schedule: Every 15 minutes")
     print("\n🚀 Starting bot in continuous mode...")
     
-    # Run initial analysis
+    # Run initial analysis immediately
     try:
+        print("\n📊 Running initial market analysis...")
         job()
+        print("✅ Initial analysis complete")
     except Exception as e:
-        print(f"Error in initial analysis: {e}")
+        print(f"⚠️ Error in initial analysis: {e}")
         traceback.print_exc()
+        print("🔄 Continuing with scheduled analysis...")
 
-    print("\n⏰ Bot running in continuous mode...")
+    print("\n⏰ Bot running in continuous mode (15-minute intervals)")
+    print("🔄 Next analysis times: XX:00, XX:15, XX:30, XX:45")
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-    # Main loop
-    try:
-        while True:
-            try:
-                schedule.run_pending()
-                time.sleep(1)
-            except Exception as e:
-                print(f"\n❌ Error in schedule loop: {e}")
-                traceback.print_exc()
-                time.sleep(5)  # Wait before retrying
-                continue
-    except KeyboardInterrupt:
-        print("\n⚠️ Bot shutdown requested...")
-    finally:
-        print("\n✅ Bot shutdown complete. Goodbye!")
+    last_run = time.time()
+    consecutive_errors = 0
+
+    # Main loop with improved error handling and schedule monitoring
+    while True:
+        try:
+            # Run pending tasks
+            schedule.run_pending()
+            
+            # Monitor schedule health
+            current_time = time.time()
+            if current_time - last_run > 900:  # 15 minutes in seconds
+                print("⚠️ Schedule delay detected, forcing analysis...")
+                job()
+                last_run = current_time
+
+            # Reset error counter on successful iteration
+            if consecutive_errors > 0:
+                consecutive_errors = 0
+                print("✅ Bot recovered from previous errors")
+            
+            # Print next run time every 5 minutes
+            if time.time() % 300 < 1:  # Every 5 minutes
+                next_run = schedule.next_run()
+                if next_run:
+                    print(f"⏰ Next analysis at: {next_run.strftime('%H:%M:%S')}")
+            
+            time.sleep(1)
+            
+        except requests.exceptions.RequestException as e:
+            consecutive_errors += 1
+            print(f"\n⚠️ Network error (attempt {consecutive_errors}): {e}")
+            
+            # Implement exponential backoff
+            wait_time = min(30, 5 * consecutive_errors)
+            print(f"⏳ Waiting {wait_time} seconds before retry...")
+            time.sleep(wait_time)
+            
+        except Exception as e:
+            consecutive_errors += 1
+            print(f"\n❌ Error in main loop (attempt {consecutive_errors}): {e}")
+            traceback.print_exc()
+            
+            if consecutive_errors > 10:
+                print("⚠️ Too many consecutive errors, restarting bot...")
+                time.sleep(10)
+                consecutive_errors = 0
+            else:
+                time.sleep(5)
+            
+        except KeyboardInterrupt:
+            print("\n⚠️ Bot shutdown requested...")
+            break
+            
+    print("\n✅ Bot shutdown complete. Goodbye!")
     print("   • Multi-timeframe trend alignment mandatory")
     print("   • Volume confirmation required")
     print("   • Market structure bias alignment")
