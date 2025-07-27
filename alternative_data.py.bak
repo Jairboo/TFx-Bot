@@ -1,3 +1,4 @@
+
 import requests
 import pandas as pd
 import numpy as np
@@ -5,10 +6,6 @@ from datetime import datetime, timedelta
 import time
 import yfinance as yf
 import warnings
-import logging
-
-# Configure logging and suppress warnings
-logging.basicConfig(level=logging.INFO)
 warnings.filterwarnings('ignore')
 
 class AlternativeDataProvider:
@@ -79,64 +76,60 @@ class AlternativeDataProvider:
         }
 
     def get_enhanced_yahoo_data(self, symbol, timeframe='1h', limit=200):
-        """Fetch enhanced Yahoo Finance data with improved error handling"""
-        max_retries = 5
-        retry_delay = 10
-        timeout = 30
-        
-        # Map timeframes
-        tf_map = {'1h': '1h', '4h': '1h', '1d': '1d'}
-        period_map = {'1h': '30d', '4h': '60d', '1d': '1y'}
-        
-        yf_tf = tf_map.get(timeframe, '1h')
-        yf_period = period_map.get(timeframe, '30d')
+        """Enhanced Yahoo Finance data with multiple attempts and retries"""
+        max_retries = 5  # Increased from 3
+        retry_delay = 10  # Increased from 5
+        last_error = None
+        timeout = 30  # Increased from default
 
         for attempt in range(max_retries):
             try:
-                logging.info(f"📊 Fetching {timeframe} data for {symbol} (Attempt {attempt + 1}/{max_retries})")
+                # Map timeframe
+                tf_map = {'1h': '1h', '4h': '1h', '1d': '1d'}
+                period_map = {'1h': '30d', '4h': '60d', '1d': '1y'}
+                
+                yf_tf = tf_map.get(timeframe, '1h')
+                yf_period = period_map.get(timeframe, '30d')
                 
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    data = yf.download(
-                        symbol, 
-                        interval=yf_tf, 
-                        period=yf_period, 
-                        auto_adjust=True, 
-                        progress=False,
-                        timeout=timeout
-                    )
+                    data = yf.download(symbol, interval=yf_tf, period=yf_period, 
+                                     auto_adjust=True, progress=False, timeout=20)
                 
                 if data.empty:
-                    logging.warning(f"⚠️ Empty data received for {symbol}")
+                    print(f"⚠️ Attempt {attempt + 1}/{max_retries}: Empty data for {symbol}")
                     if attempt < max_retries - 1:
                         time.sleep(retry_delay)
                         continue
                     return None
-                
-                # Handle column names from yfinance
-                if isinstance(data.columns, pd.MultiIndex):
-                    data.columns = data.columns.droplevel(1)
-                
-                # For 4h timeframe, resample 1h to 4h
-                if timeframe == '4h' and yf_tf == '1h':
-                    data = data.resample('4H').agg({
-                        'Open': 'first',
-                        'High': 'max',
-                        'Low': 'min',
-                        'Close': 'last',
-                        'Volume': 'sum'
-                    }).dropna()
-                
-                logging.info(f"✅ Successfully fetched {timeframe} data for {symbol}")
-                return data.tail(limit) if len(data) > limit else data
-                
+                return data
             except Exception as e:
-                logging.error(f"⚠️ Error fetching {symbol} data: {str(e)}")
+                print(f"⚠️ Attempt {attempt + 1}/{max_retries} failed for {symbol}: {str(e)}")
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay)
                 else:
-                    logging.error(f"❌ All attempts failed for {symbol}")
+                    print(f"❌ All attempts failed for {symbol}")
                     return None
+                
+            # Handle MultiIndex columns
+            if isinstance(data.columns, pd.MultiIndex):
+                data.columns = data.columns.droplevel(1)
+            
+            # For 4h data, resample 1h to 4h
+            if timeframe == '4h' and yf_tf == '1h':
+                data = data.resample('4h').agg({
+                    'Open': 'first',
+                    'High': 'max', 
+                    'Low': 'min',
+                    'Close': 'last',
+                    'Volume': 'sum'
+                }).dropna()
+            
+            return data.tail(limit) if len(data) > limit else data
+            
+        except Exception as e:
+            print(f"Enhanced Yahoo data error for {symbol}: {e}")
+            return None
 
     def get_crypto_data_coingecko(self, crypto_id, days=30):
         """Get cryptocurrency data from CoinGecko"""

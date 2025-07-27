@@ -5,6 +5,8 @@ import requests
 import schedule
 import time
 import numpy as np
+import traceback
+import os
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine, Column, String, Float, Integer, DateTime, Boolean
 from sqlalchemy.orm import declarative_base, sessionmaker
@@ -689,12 +691,23 @@ def calculate_advanced_indicators(data):
 def fetch_market_data(symbol, market_name):
     """Fetch enhanced data using multiple alternative data sources"""
     data_dict = {}
+    max_retries = 3
+    retry_delay = 5  # seconds
 
     try:
         print(f"🔍 Fetching comprehensive data for {market_name}...")
 
-        # Get comprehensive data from alternative sources
-        alt_data = alt_data_provider.get_comprehensive_data(market_name)
+        # Get comprehensive data from alternative sources with retry logic
+        for attempt in range(max_retries):
+            try:
+                alt_data = alt_data_provider.get_comprehensive_data(market_name)
+                if alt_data:
+                    break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"Retry {attempt + 1}/{max_retries} for {market_name}")
+                    time.sleep(retry_delay)
+                continue
 
         # Process timeframe data
         for tf in ['1h', '4h', '1d']:
@@ -1130,25 +1143,40 @@ def generate_market_signal(market_name, symbol):
                 tf_data = data_dict[tf]
                 tf_latest = tf_data.iloc[-1]
 
+                # Check market structure
                 tf_structure = tf_latest.get('StructureBias', 0)
                 if tf_structure == 1:
                     mtf_bullish += 1
                 elif tf_structure == -1:
                     mtf_bearish += 1
 
+                # Check candlestick patterns
                 if tf_latest.get('BullishEngulfing', False) or tf_latest.get('MorningStar', False):
                     mtf_bullish += 2
                 elif tf_latest.get('BearishEngulfing', False) or tf_latest.get('EveningStar', False):
                     mtf_bearish += 2
 
-        if mtf_bullish >= 2:
-            bullish_signals += 4
+                # Check trend direction
+                if tf_latest.get('EMA20', 0) > tf_latest.get('EMA50', 0):
+                    mtf_bullish += 1
+                elif tf_latest.get('EMA20', 0) < tf_latest.get('EMA50', 0):
+                    mtf_bearish += 1
+
+                # Check RSI conditions
+                tf_rsi = tf_latest.get('RSI', 50)
+                if tf_rsi < 30:
+                    mtf_bullish += 1
+                elif tf_rsi > 70:
+                    mtf_bearish += 1
+
+        if mtf_bullish >= 3:
+            bullish_signals += 5
             critical_factors += 1
-            reasons.append("⏳ Higher Timeframe Bullish Confluence")
-        elif mtf_bearish >= 2:
-            bearish_signals += 4
+            reasons.append("📈 Strong Higher Timeframe Bullish Signals")
+        elif mtf_bearish >= 3:
+            bearish_signals += 5
             critical_factors += 1
-            reasons.append("⏳ Higher Timeframe Bearish Confluence")
+            reasons.append("📉 Strong Higher Timeframe Bearish Signals")
 
         # Apply fundamental analysis results
         reasons.extend(fundamental_reasons[:3])  # Limit fundamental reasons
@@ -1409,21 +1437,27 @@ def generate_market_signal(market_name, symbol):
 def log_to_db(signal):
     session = Session()
     try:
+        # Create new signal entry
         signal_entry = Signal(
-            market=signal["market"],
-            direction=signal["direction"],
-            entry=signal["entry"],
-            stop_loss=signal["stop_loss"],
-            take_profit=signal["take_profit"],
-            confidence=signal["confidence"],
-            reasons="\n".join(signal["reasons"]),
-            technical_score=signal["technical_score"],
-            fundamental_score=signal["fundamental_score"]
+            market=signal['market'],
+            direction=signal['direction'],
+            entry=signal['entry'],
+            stop_loss=signal['stop_loss'],
+            take_profit=signal['take_profit'],
+            confidence=signal['confidence'],
+            reasons=', '.join(signal['reasons']),
+            technical_score=signal['technical_score'],
+            fundamental_score=signal['fundamental_score'],
+            timestamp=datetime.utcnow()
         )
         session.add(signal_entry)
         session.commit()
+        print(f"✅ Signal logged to database: {signal['market']} | {signal['direction']} | {signal['confidence']}%")
+        return True
     except Exception as e:
-        print(f"Error logging to database: {e}")
+        print(f"❌ Error logging to database: {e}")
+        session.rollback()
+        return False
     finally:
         session.close()
 
@@ -1792,11 +1826,38 @@ def main():
     print("🕯️ Price Action + Technical + Fundamental Analysis")
     print("🎯 EXTREME REQUIREMENTS (LOSS PREVENTION):")
     print("   • London Session: 92%+ confidence required")
-    print("   • Outside London: 95%+ confidence required")
-    print("   • Minimum 1:2.0 risk-reward ratio")
-    print("   • Maximum 0.8% risk per trade (forex/gold)")
-    print("   • Maximum 1.2% risk per trade (crypto)")
-    print("🔒 ULTRA-CONSERVATIVE VALIDATION:")
+    print("   • Non-London: 95%+ confidence required")
+    print("   • Minimum 2.0 Risk-Reward ratio")
+    print("   • Multi-timeframe confirmation")
+    print("   • Volume validation required")
+    print("   • Market structure alignment")
+    print("\n🚀 Starting bot in continuous mode...")
+    
+    # Run initial analysis
+    try:
+        job()
+    except Exception as e:
+        print(f"Error in initial analysis: {e}")
+        traceback.print_exc()
+
+    print("\n⏰ Bot running in continuous mode...")
+    print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+    # Main loop
+    try:
+        while True:
+            try:
+                schedule.run_pending()
+                time.sleep(1)
+            except Exception as e:
+                print(f"\n❌ Error in schedule loop: {e}")
+                traceback.print_exc()
+                time.sleep(5)  # Wait before retrying
+                continue
+    except KeyboardInterrupt:
+        print("\n⚠️ Bot shutdown requested...")
+    finally:
+        print("\n✅ Bot shutdown complete. Goodbye!")
     print("   • Multi-timeframe trend alignment mandatory")
     print("   • Volume confirmation required")
     print("   • Market structure bias alignment")
